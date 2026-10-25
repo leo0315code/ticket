@@ -187,6 +187,16 @@ async function submit() {
         height: 46px;
         font-size: 16px;
     }
+    /* 分类下拉与输入框同高（Element Plus 新版结构 .el-select__wrapper） */
+    .create-form.mobile :deep(.el-select) {
+        --el-component-size-large: 46px;
+    }
+    .create-form.mobile :deep(.el-select__wrapper),
+    .create-form.mobile :deep(.el-select .el-input__wrapper) {
+        height: 46px;
+        min-height: 46px;
+        font-size: 16px;
+    }
     .create-form.mobile :deep(.el-textarea__inner) {
         min-height: 132px;
         font-size: 16px;
@@ -237,6 +247,11 @@ async function submit() {
     /* 附件区 */
     .attach-box {
         width: 100%;
+    }
+    .attach-box :deep(.el-upload .el-button) {
+        height: 46px;
+        font-size: 15px;
+        border-radius: 10px;
     }
     .attach-box .file-chip {
         display: flex;

@@ -14,7 +14,7 @@
                 <el-input v-model="form.title" maxlength="100" show-word-limit placeholder="一句话描述问题" />
             </el-form-item>
             <el-form-item label="分类">
-                <el-select v-model="form.category_id" placeholder="选择分类（可选）" clearable style="width: 240px">
+                <el-select v-model="form.category_id" placeholder="选择分类（可选）" clearable :style="{ width: isMobile ? '100%' : '240px' }">
                     <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
                 </el-select>
             </el-form-item>
@@ -26,6 +26,27 @@
             <el-form-item label="内容" required>
                 <el-input v-model="form.content" type="textarea" :rows="8" maxlength="5000" show-word-limit placeholder="详细描述问题现象、出现时间、已尝试的操作等" />
             </el-form-item>
+            <el-form-item label="附件（可选，最多 10MB/个）" class="attach-item">
+                <div class="attach-box" :class="{ mobile: isMobile }">
+                    <el-upload
+                        :show-file-list="false"
+                        :auto-upload="false"
+                        multiple
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                        :on-change="addFile"
+                    >
+                        <el-button :size="isMobile ? 'large' : 'default'">
+                            📎 选择文件
+                        </el-button>
+                    </el-upload>
+                    <div v-for="(f, i) in files" :key="f.name + i" class="file-chip">
+                        <span class="file-name">{{ f.name }}</span>
+                        <span class="file-size">{{ formatSize(f.size) }}</span>
+                        <el-icon class="file-del" @click="files.splice(i, 1)"><CircleCloseFilled /></el-icon>
+                    </div>
+                </div>
+            </el-form-item>
+
             <el-form-item class="actions">
                 <el-button v-if="!isMobile" @click="$router.back()">取消</el-button>
                 <el-button type="primary" :loading="loading" class="submit-btn" @click="submit">
@@ -54,6 +75,24 @@ import { useAuthStore } from '../stores/auth';
 import { adminPath, ticketPath } from '../paths';
 
 const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
+const files = ref([]);
+
+function addFile(file) {
+    if (file.size > 10 * 1024 * 1024) {
+        ElMessage.warning(`「${file.name}」超过 10MB，未添加`);
+        return;
+    }
+    if (files.value.length >= 5) {
+        ElMessage.warning('最多添加 5 个附件');
+        return;
+    }
+    files.value.push({ name: file.name, size: file.size, raw: file.raw });
+}
+
+function formatSize(bytes) {
+    if (bytes > 1024 * 1024) return (bytes / 1024 / 1024).toFixed(1) + ' MB';
+    return Math.max(1, Math.round(bytes / 1024)) + ' KB';
+}
 window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMobile.value = e.matches; });
 import { PRIORITY_MAP } from '../constants';
 
@@ -82,6 +121,22 @@ async function submit() {
             ...form,
             category_id: form.category_id || null,
         });
+        // 工单创建成功后上传附件
+        if (files.value.length > 0) {
+            ElMessage.info(`正在上传 ${files.value.length} 个附件…`);
+            let ok = 0;
+            for (const f of files.value) {
+                try {
+                    const fd = new FormData();
+                    fd.append('file', f.raw);
+                    await http.post(`/tickets/${data.id}/attachments`, fd);
+                    ok++;
+                } catch (e) {
+                    ElMessage.warning(`附件「${f.name}」上传失败，可稍后在工单详情中补传`);
+                }
+            }
+            if (ok > 0) ElMessage.success(`${ok} 个附件已上传`);
+        }
         ElMessage.success(`工单 ${data.no} 创建成功`);
         router.push(auth.isStaff && !route.path.startsWith('/m') ? ticketPath(data.id) : `/m/tickets/${data.id}`);
     } catch (e) {
@@ -178,6 +233,34 @@ async function submit() {
         font-size: 16px;
         border-radius: 12px;
         letter-spacing: 1px;
+    }
+    /* 附件区 */
+    .attach-box {
+        width: 100%;
+    }
+    .attach-box .file-chip {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-top: 10px;
+        padding: 10px 12px;
+        background: var(--el-fill-color-light);
+        border-radius: 10px;
+        font-size: 14px;
+    }
+    .file-chip .file-name {
+        flex: 1;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+    .file-chip .file-size {
+        color: var(--el-text-color-secondary);
+        font-size: 12px;
+    }
+    .file-chip .file-del {
+        color: var(--el-text-color-secondary);
+        cursor: pointer;
     }
     /* 提示条紧凑 */
     :deep(.el-alert) {

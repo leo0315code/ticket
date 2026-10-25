@@ -37,7 +37,8 @@
                             <el-button type="primary" size="large" class="submit" :loading="loading" @click="doLogin">登 录</el-button>
                         </el-form>
                         <div class="tips">
-                            演示账号：admin / zhang / li / xiaoming / xiaohong，密码均为 <b>password</b>
+                            演示账号：xiaoming / xiaohong，密码 <b>password</b><br />
+                            客服与管理员请从后台入口登录
                         </div>
                     </el-tab-pane>
 
@@ -197,6 +198,44 @@ async function doRegister() {
     }
     .panel {
         width: 420px;
+        padding: 28px 18px;
+    }
+    .login-page {
+        background: linear-gradient(165deg, #5b6ee8 0%, #8e54c9 100%);
+    }
+    .form-side :deep(.el-tabs__nav) {
+        width: 100%;
+    }
+    .form-side :deep(.el-tabs__item) {
+        font-size: 16px;
+        padding: 0 16px;
+    }
+    /* 输入放大（防 iOS 聚焦缩放） */
+    .form-side :deep(.el-input__inner) {
+        height: 46px;
+        font-size: 16px;
+    }
+    .form-side :deep(.el-input__wrapper) {
+        border-radius: 10px;
+    }
+    .form-side :deep(.el-input__inner::placeholder) {
+        color: var(--el-text-color-secondary);
+    }
+    .submit {
+        height: 48px;
+        font-size: 16px;
+        border-radius: 12px;
+        letter-spacing: 2px;
+        margin-top: 8px;
+    }
+    .tips {
+        font-size: 12px;
+        line-height: 1.9;
+        border-radius: 10px;
+        padding: 10px 14px;
+    }
+    .login-page :deep(.el-alert) {
+        border-radius: 10px;
     }
 }
 .tips {

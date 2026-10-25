@@ -1,7 +1,15 @@
 <template>
-    <el-card style="max-width: 720px">
-        <template #header><span>新建工单</span></template>
-        <el-form :model="form" label-width="80px">
+    <el-card class="create-card" :style="isMobile ? '' : 'max-width: 720px'">
+        <template #header>
+            <span class="page-title">{{ isMobile ? '提交新工单' : '新建工单' }}</span>
+        </template>
+        <el-form
+            :model="form"
+            :label-position="isMobile ? 'top' : 'right'"
+            :label-width="isMobile ? 'auto' : '80px'"
+            class="create-form"
+            :class="{ mobile: isMobile }"
+        >
             <el-form-item label="标题" required>
                 <el-input v-model="form.title" maxlength="100" show-word-limit placeholder="一句话描述问题" />
             </el-form-item>
@@ -18,9 +26,11 @@
             <el-form-item label="内容" required>
                 <el-input v-model="form.content" type="textarea" :rows="8" maxlength="5000" show-word-limit placeholder="详细描述问题现象、出现时间、已尝试的操作等" />
             </el-form-item>
-            <el-form-item>
-                <el-button type="primary" :loading="loading" @click="submit">提交工单</el-button>
-                <el-button @click="$router.back()">取消</el-button>
+            <el-form-item class="actions">
+                <el-button v-if="!isMobile" @click="$router.back()">取消</el-button>
+                <el-button type="primary" :loading="loading" class="submit-btn" @click="submit">
+                    {{ isMobile ? '提 交 工 单' : '提交工单' }}
+                </el-button>
             </el-form-item>
         </el-form>
         <el-alert type="info" :closable="false">
@@ -42,6 +52,9 @@ import { ElMessage } from 'element-plus';
 import http from '../api';
 import { useAuthStore } from '../stores/auth';
 import { adminPath, ticketPath } from '../paths';
+
+const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
+window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMobile.value = e.matches; });
 import { PRIORITY_MAP } from '../constants';
 
 const router = useRouter();
@@ -80,28 +93,96 @@ async function submit() {
 </script>
 
 <style scoped>
+.page-title {
+    font-weight: 700;
+}
+
+/* 移动端精修表单 */
 @media (max-width: 768px) {
-    :deep(.el-input__inner),
-    :deep(.el-textarea__inner) {
-        font-size: 16px !important; /* ≥16px 防止 iOS 聚焦自动缩放 */
+    .create-card {
+        border-radius: 14px;
+        border: none;
     }
-    :deep(.el-input__inner) {
+    .create-card :deep(.el-card__header) {
+        padding: 16px 16px 8px;
+        border-bottom: none;
+        font-size: 18px;
+    }
+    .create-card :deep(.el-card__body) {
+        padding: 8px 16px 16px;
+    }
+    .create-form.mobile :deep(.el-form-item) {
+        margin-bottom: 18px;
+    }
+    .create-form.mobile :deep(.el-form-item__label) {
+        font-size: 14px;
+        font-weight: 600;
+        color: var(--el-text-color-primary);
+        margin-bottom: 8px;
+        line-height: 1.4;
+    }
+    .create-form.mobile :deep(.el-input__wrapper),
+    .create-form.mobile :deep(.el-select .el-input__wrapper),
+    .create-form.mobile :deep(.el-textarea__inner) {
+        border-radius: 10px;
+        box-shadow: 0 0 0 1px var(--el-border-color) inset;
+        background: var(--el-bg-color);
+    }
+    .create-form.mobile :deep(.el-input__inner) {
         height: 46px;
-    }
-    :deep(.el-textarea__inner) {
-        min-height: 140px !important;
-        line-height: 1.7;
-    }
-    :deep(.el-radio-button__inner) {
-        padding: 12px 18px;
-        font-size: 15px;
-    }
-    :deep(.el-button) {
-        height: 48px;
         font-size: 16px;
     }
-    :deep(.el-form-item__label) {
+    .create-form.mobile :deep(.el-textarea__inner) {
+        min-height: 132px;
+        font-size: 16px;
+        line-height: 1.7;
+        padding: 12px 14px;
+    }
+    .create-form.mobile :deep(.el-textarea__inner::placeholder),
+    .create-form.mobile :deep(.el-input__inner::placeholder) {
+        color: var(--el-text-color-secondary);
+    }
+    /* 优先级四等分 */
+    .create-form.mobile :deep(.el-radio-group) {
+        display: flex;
+        width: 100%;
+    }
+    .create-form.mobile :deep(.el-radio-button) {
+        flex: 1;
+    }
+    .create-form.mobile :deep(.el-radio-button__inner) {
+        width: 100%;
+        padding: 13px 0;
         font-size: 15px;
+        border-radius: 0;
+    }
+    .create-form.mobile :deep(.el-radio-button:first-child .el-radio-button__inner),
+    .create-form.mobile :deep(.el-radio-button:last-child .el-radio-button__inner) {
+        border-radius: 0;
+    }
+    .create-form.mobile :deep(.el-radio-group) {
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 0 0 1px var(--el-border-color) inset;
+    }
+    .create-form.mobile :deep(.el-radio-button__original-radio:checked + .el-radio-button__inner) {
+        font-weight: 700;
+    }
+    /* 主按钮全宽 */
+    .actions :deep(.el-form-item__content) {
+        display: block;
+    }
+    .submit-btn {
+        width: 100%;
+        height: 50px;
+        font-size: 16px;
+        border-radius: 12px;
+        letter-spacing: 1px;
+    }
+    /* 提示条紧凑 */
+    :deep(.el-alert) {
+        border-radius: 10px;
+        margin-top: 4px;
     }
 }
 </style>

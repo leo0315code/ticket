@@ -5,7 +5,8 @@ import { useAuthStore } from './stores/auth';
 export { ticketPath };
 
 const routes = [
-    { path: '/login', component: () => import('./views/LoginView.vue'), meta: { guest: true } },
+    { path: '/login', component: () => import('./views/LoginView.vue'), meta: { guest: true, client: true } },
+    { path: adminPath('login'), name: 'admin-login', component: () => import('./views/AdminLoginView.vue'), meta: { guest: true, adminGate: true } },
 
     // 管理后台（管理员/客服）——路径前缀由 .env ADMIN_PATH 配置，避免使用易猜的 admin
     {
@@ -47,15 +48,20 @@ const router = createRouter({ history: createWebHistory(), routes });
 
 router.beforeEach((to) => {
     const auth = useAuthStore();
-    if (!to.meta.guest && !auth.isLoggedIn) return '/login';
+    // 未登录：后台去后台登录页，其余去客户端登录页
+    if (!to.meta.guest && !auth.isLoggedIn) {
+        return isAdminRoute(to.path) ? adminPath('login') : '/login';
+    }
     if (to.meta.staff && !auth.isStaff) return '/m/tickets';
     if (to.meta.admin && !auth.isAdmin) return '/m/tickets';
     // 普通用户不能进管理后台
-    if (auth.isLoggedIn && auth.user?.role === 'user' && isAdminRoute(to.path)) {
+    if (auth.isLoggedIn && auth.user?.role === 'user' && isAdminRoute(to.path) && !to.meta.guest) {
         return '/m/tickets';
     }
-    if (to.path === '/login' && auth.isLoggedIn) {
-        return homePath();
+    // 已登录访问登录页：各回各家
+    if (to.meta.guest && auth.isLoggedIn) {
+        if (to.meta.adminGate) return auth.isStaff ? adminPath('tickets') : '/m/tickets';
+        return auth.user?.role === 'user' ? '/m/tickets' : adminPath('tickets');
     }
     return true;
 });

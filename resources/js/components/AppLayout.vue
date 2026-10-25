@@ -11,8 +11,7 @@
                 <el-menu-item v-if="auth.isAdmin" :index="adminPath('categories')">分类管理</el-menu-item>
                 <el-menu-item v-if="auth.isAdmin" :index="adminPath('users')">用户管理</el-menu-item>
             </el-menu>
-            <!-- 移动端抽屉菜单 -->
-            <el-icon v-else :size="22" class="mobile-menu-btn" @click="mobileMenu = true"><Menu /></el-icon>
+            <!-- 移动端：菜单收进底部 Tab（见底部 tabbar） -->
             <el-tooltip :content="dark ? '切换亮色模式' : '切换暗黑模式'" placement="bottom">
                 <el-icon :size="20" class="theme-toggle" @click="dark = toggleTheme()">
                     <Moon v-if="!dark" />
@@ -39,16 +38,19 @@
             <router-view />
         </el-main>
 
-        <el-drawer v-model="mobileMenu" direction="rtl" size="60%" :with-header="false">
-            <el-menu :default-active="active" router @select="mobileMenu = false">
-                <el-menu-item :index="adminPath('tickets')">我的工单</el-menu-item>
-                <el-menu-item :index="adminPath('tickets/new')">新建工单</el-menu-item>
-                <el-menu-item :index="adminPath('faqs')">知识库</el-menu-item>
-                <el-menu-item v-if="auth.isStaff" :index="adminPath('dashboard')">统计看板</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" :index="adminPath('categories')">分类管理</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" :index="adminPath('users')">用户管理</el-menu-item>
-            </el-menu>
-        </el-drawer>
+        <!-- 移动端底部 Tab 导航 -->
+        <nav v-if="isMobile" class="p-tabbar">
+            <div
+                v-for="t in mobileTabs"
+                :key="t.path"
+                class="p-tab"
+                :class="{ active: isActive(t.path) }"
+                @click="$router.push(t.path)"
+            >
+                <el-icon :size="22"><component :is="t.icon" /></el-icon>
+                <span>{{ t.label }}</span>
+            </div>
+        </nav>
     </el-container>
 </template>
 
@@ -56,7 +58,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowDown, Menu, Moon, Sunny } from '@element-plus/icons-vue';
+import { ArrowDown, Moon, Sunny, Tickets, EditPen, Collection, DataLine, Files, User } from '@element-plus/icons-vue';
 import NotificationBell from './NotificationBell.vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
@@ -69,9 +71,21 @@ const route = useRoute();
 const router = useRouter();
 const active = computed(() => route.path);
 const dark = ref(document.documentElement.classList.contains('dark'));
-const mobileMenu = ref(false);
 const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
 window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMobile.value = e.matches; });
+
+const mobileTabs = computed(() => [
+    { path: adminPath('tickets'), label: '工单', icon: Tickets },
+    { path: adminPath('tickets/new'), label: '新建', icon: EditPen },
+    { path: adminPath('faqs'), label: '知识库', icon: Collection },
+    ...(auth.isStaff ? [{ path: adminPath('dashboard'), label: '看板', icon: DataLine }] : []),
+    ...(auth.isAdmin ? [{ path: adminPath('categories'), label: '分类', icon: Files }, { path: adminPath('users'), label: '用户', icon: User }] : []),
+]);
+
+function isActive(path) {
+    if (path.endsWith('tickets')) return route.path === path;
+    return route.path === path || route.path.startsWith(`${path}/`);
+}
 
 async function onCommand(cmd) {
     if (cmd === 'logout') {
@@ -120,15 +134,40 @@ async function onCommand(cmd) {
 .user-name {
     color: var(--el-text-color-primary);
 }
-.mobile-menu-btn {
-    cursor: pointer;
-    margin-right: 8px;
+.p-tabbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 200;
+    display: flex;
+    background: var(--el-bg-color);
+    border-top: 1px solid var(--el-border-color-lighter);
+    padding-bottom: env(safe-area-inset-bottom);
+}
+.p-tab {
     flex: 1;
-    color: var(--el-text-color-primary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+    padding: 8px 0 6px;
+    font-size: 11px;
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+}
+.p-tab.active {
+    color: var(--el-color-primary);
 }
 @media (max-width: 768px) {
     .user-name {
         display: none;
+    }
+    .layout {
+        padding-bottom: calc(58px + env(safe-area-inset-bottom));
+    }
+    .el-main {
+        padding-bottom: calc(70px + env(safe-area-inset-bottom));
     }
 }
 </style>

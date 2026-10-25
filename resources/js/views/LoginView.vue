@@ -96,7 +96,13 @@ async function doLogin() {
     error.value = '';
     try {
         await auth.login(form.account, form.password);
-        router.push(homePath());
+        if (auth.user?.role !== 'user') {
+            // 移动端仅普通用户：工作人员请走后台入口
+            await auth.logout();
+            error.value = '该账号为客服/管理员，请从后台入口登录';
+            return;
+        }
+        router.push('/m/tickets');
     } catch (e) {
         error.value = e.response?.data?.message || '登录失败';
     } finally {

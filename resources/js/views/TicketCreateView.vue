@@ -78,3 +78,30 @@ async function submit() {
     }
 }
 </script>
+
+<style scoped>
+@media (max-width: 768px) {
+    :deep(.el-input__inner),
+    :deep(.el-textarea__inner) {
+        font-size: 16px !important; /* ≥16px 防止 iOS 聚焦自动缩放 */
+    }
+    :deep(.el-input__inner) {
+        height: 46px;
+    }
+    :deep(.el-textarea__inner) {
+        min-height: 140px !important;
+        line-height: 1.7;
+    }
+    :deep(.el-radio-button__inner) {
+        padding: 12px 18px;
+        font-size: 15px;
+    }
+    :deep(.el-button) {
+        height: 48px;
+        font-size: 16px;
+    }
+    :deep(.el-form-item__label) {
+        font-size: 15px;
+    }
+}
+</style>

@@ -1,43 +1,64 @@
 <template>
     <el-container class="layout">
-        <el-header class="header">
+        <!-- 桌面端左侧边栏 -->
+        <el-aside v-if="!isMobile" width="200px" class="aside">
             <div class="brand" @click="$router.push(adminPath('tickets'))">🎫 工单系统</div>
-            <!-- 桌面端横向菜单 -->
-            <el-menu v-if="!isMobile" mode="horizontal" :default-active="active" router :ellipsis="false" class="menu">
-                <el-menu-item :index="adminPath('tickets')">我的工单</el-menu-item>
-                <el-menu-item :index="adminPath('tickets/new')">新建工单</el-menu-item>
-                <el-menu-item :index="adminPath('faqs')">知识库</el-menu-item>
-                <el-menu-item v-if="auth.isStaff" :index="adminPath('dashboard')">统计看板</el-menu-item>
-            <el-menu-item v-if="auth.isStaff" :index="adminPath('logs')">操作审计</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" :index="adminPath('categories')">分类管理</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" :index="adminPath('users')">用户管理</el-menu-item>
+            <el-menu :default-active="active" router class="side-menu">
+                <el-menu-item :index="adminPath('tickets')">
+                    <el-icon><Tickets /></el-icon><span>我的工单</span>
+                </el-menu-item>
+                <el-menu-item :index="adminPath('tickets/new')">
+                    <el-icon><EditPen /></el-icon><span>新建工单</span>
+                </el-menu-item>
+                <el-menu-item :index="adminPath('faqs')">
+                    <el-icon><Collection /></el-icon><span>知识库</span>
+                </el-menu-item>
+                <el-menu-item v-if="auth.isStaff" :index="adminPath('dashboard')">
+                    <el-icon><DataLine /></el-icon><span>统计看板</span>
+                </el-menu-item>
+                <el-menu-item v-if="auth.isStaff" :index="adminPath('logs')">
+                    <el-icon><List /></el-icon><span>操作审计</span>
+                </el-menu-item>
+                <el-menu-item v-if="auth.isAdmin" :index="adminPath('categories')">
+                    <el-icon><Files /></el-icon><span>分类管理</span>
+                </el-menu-item>
+                <el-menu-item v-if="auth.isAdmin" :index="adminPath('users')">
+                    <el-icon><User /></el-icon><span>用户管理</span>
+                </el-menu-item>
             </el-menu>
-            <!-- 移动端：菜单收进底部 Tab（见底部 tabbar） -->
-            <el-tooltip :content="dark ? '切换亮色模式' : '切换暗黑模式'" placement="bottom">
-                <el-icon :size="20" class="theme-toggle" @click="dark = toggleTheme()">
-                    <Moon v-if="!dark" />
-                    <Sunny v-else />
-                </el-icon>
-            </el-tooltip>
-            <NotificationBell />
-            <el-dropdown @command="onCommand">
-                <span class="user">
-                    <el-avatar :size="30" :style="{ background: avatarColor(auth.user?.name) }">
-                        {{ auth.user?.name?.[0] }}
-                    </el-avatar>
-                    <span class="user-name">{{ auth.user?.name }}（{{ ROLE_MAP[auth.user?.role] }}）</span>
-                    <el-icon><ArrowDown /></el-icon>
-                </span>
-                <template #dropdown>
-                    <el-dropdown-menu>
-                        <el-dropdown-item command="logout">退出登录</el-dropdown-item>
-                    </el-dropdown-menu>
-                </template>
+        </el-aside>
+
+        <el-container class="main-wrap">
+            <el-header class="header">
+                <div class="header-left">
+                    <span class="page-crumb">{{ currentLabel }}</span>
+                </div>
+                <el-tooltip :content="dark ? '切换亮色模式' : '切换暗黑模式'" placement="bottom">
+                    <el-icon :size="20" class="theme-toggle" @click="dark = toggleTheme()">
+                        <Moon v-if="!dark" />
+                        <Sunny v-else />
+                    </el-icon>
+                </el-tooltip>
+                <NotificationBell />
+                <el-dropdown @command="onCommand">
+                    <span class="user">
+                        <el-avatar :size="30" :style="{ background: avatarColor(auth.user?.name) }">
+                            {{ auth.user?.name?.[0] }}
+                        </el-avatar>
+                        <span class="user-name">{{ auth.user?.name }}（{{ ROLE_MAP[auth.user?.role] }}）</span>
+                        <el-icon><ArrowDown /></el-icon>
+                    </span>
+                    <template #dropdown>
+                        <el-dropdown-menu>
+                            <el-dropdown-item command="logout">退出登录</el-dropdown-item>
+                        </el-dropdown-menu>
+                    </template>
             </el-dropdown>
         </el-header>
         <el-main>
             <router-view />
         </el-main>
+        </el-container>
 
         <!-- 移动端底部 Tab 导航 -->
         <nav v-if="isMobile" class="p-tabbar">
@@ -71,6 +92,20 @@ const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
 const active = computed(() => route.path);
+
+const LABELS = [
+    [adminPath('tickets/new'), '新建工单'],
+    [adminPath('tickets'), '工单管理'],
+    [adminPath('faqs'), '知识库'],
+    [adminPath('dashboard'), '统计看板'],
+    [adminPath('logs'), '操作审计'],
+    [adminPath('categories'), '分类管理'],
+    [adminPath('users'), '用户管理'],
+];
+const currentLabel = computed(() => {
+    const hit = LABELS.find(([p]) => isActive(p));
+    return hit ? hit[1] : '工单系统';
+});
 const dark = ref(document.documentElement.classList.contains('dark'));
 const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
 window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMobile.value = e.matches; });
@@ -98,29 +133,56 @@ async function onCommand(cmd) {
 </script>
 
 <style scoped>
-.header {
-    display: flex;
-    align-items: center;
-    background: #fff;
-    border-bottom: 1px solid #e4e7ed;
+.layout {
+    min-height: 100vh;
+}
+.aside {
+    background: var(--el-bg-color);
+    border-right: 1px solid var(--el-border-color-lighter);
     position: sticky;
     top: 0;
-    z-index: 100;
+    height: 100vh;
+    overflow-y: auto;
 }
 .brand {
-    font-size: 18px;
-    font-weight: 600;
-    margin-right: 32px;
+    font-size: 17px;
+    font-weight: 700;
+    padding: 18px 16px 12px;
     cursor: pointer;
     white-space: nowrap;
 }
-.menu {
-    flex: 1;
-    border-bottom: none;
+.side-menu {
+    border-right: none;
+}
+.side-menu .el-menu-item {
+    height: 46px;
+    line-height: 46px;
+}
+.side-menu .el-menu-item.is-active {
+    background: var(--el-color-primary-light-9);
+    border-right: 2px solid var(--el-color-primary);
+}
+.main-wrap {
+    background: var(--el-fill-color-lighter);
+    min-height: 100vh;
+}
+.header {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: var(--el-bg-color);
+    border-bottom: 1px solid var(--el-border-color-lighter);
+    height: 56px;
+}
+.header-left {
+    margin-right: auto;
+}
+.page-crumb {
+    font-size: 15px;
+    font-weight: 600;
 }
 .theme-toggle {
     cursor: pointer;
-    margin-right: 20px;
     color: var(--el-text-color-primary);
     display: flex;
     align-items: center;
@@ -135,6 +197,7 @@ async function onCommand(cmd) {
 .user-name {
     color: var(--el-text-color-primary);
 }
+/* 移动端 */
 .p-tabbar {
     position: fixed;
     left: 0;
@@ -161,6 +224,9 @@ async function onCommand(cmd) {
     color: var(--el-color-primary);
 }
 @media (max-width: 768px) {
+    .header {
+        padding: 0 12px;
+    }
     .user-name {
         display: none;
     }

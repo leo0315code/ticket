@@ -49,7 +49,12 @@ class AttachmentTest extends ApiTestCase
         $ticket = Ticket::factory()->create(['user_id' => $owner->id]);
 
         $this->actingAsApi($owner)->postJson("/api/tickets/{$ticket->id}/attachments", [
-            'file' => UploadedFile::fake()->create('big.bin', 1024 * 11), // 11MB > 10MB
+            'file' => UploadedFile::fake()->create('big.zip', 1024 * 11), // 11MB > 10MB
+        ])->assertStatus(422)->assertJsonValidationErrors('file');
+
+        // 类型白名单
+        $this->actingAsApi($owner)->postJson("/api/tickets/{$ticket->id}/attachments", [
+            'file' => UploadedFile::fake()->create('evil.php', 10),
         ])->assertStatus(422)->assertJsonValidationErrors('file');
     }
 }

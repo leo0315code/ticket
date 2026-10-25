@@ -16,7 +16,8 @@ class AttachmentController extends Controller
         $this->authorize('view', $ticket);
 
         $data = $request->validate([
-            'file' => ['required', 'file', 'max:10240'], // 最大 10MB
+            // 类型白名单 + 最大 10MB
+            'file' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp,bmp,pdf,doc,docx,xls,xlsx,csv,txt,zip,rar,7z'],
         ]);
 
         $file = $data['file'];

@@ -72,6 +72,53 @@ class AdminTest extends ApiTestCase
             ->assertStatus(403);
     }
 
+    public function test_admin_can_create_staff_account_and_it_can_login(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->actingAsApi($admin)->postJson('/api/users', [
+            'name' => '客服小王',
+            'username' => 'wangwu',
+            'password' => 'secret12345',
+            'role' => 'agent',
+        ])->assertCreated()->assertJsonPath('role', 'agent');
+
+        // 新客服可直接用账号登录
+        $this->postJson('/api/login', ['account' => 'wangwu', 'password' => 'secret12345'])
+            ->assertOk()->assertJsonPath('user.role', 'agent');
+
+        // 重复账号 422；非 admin 403
+        $this->actingAsApi($admin)->postJson('/api/users', [
+            'name' => 'x', 'username' => 'wangwu', 'password' => 'secret12345', 'role' => 'agent',
+        ])->assertStatus(422)->assertJsonValidationErrors('username');
+
+        $this->actingAsApi($this->makeUser('agent'))->postJson('/api/users', [
+            'name' => 'x', 'username' => 'newbie', 'password' => 'secret12345', 'role' => 'agent',
+        ])->assertStatus(403);
+    }
+
+    public function test_admin_can_reset_password_and_old_tokens_die(): void
+    {
+        $admin = $this->makeUser('admin');
+        $agent = $this->makeUser('agent', ['username' => 'reset_agent']);
+        $oldToken = $agent->createToken('old')->plainTextToken;
+
+        $res = $this->actingAsApi($admin)
+            ->putJson("/api/users/{$agent->id}/reset-password")
+            ->assertOk();
+        $newPassword = $res->json('password');
+        $this->assertSame(12, strlen($newPassword));
+
+        // 旧 token 失效（先刷新守卫缓存，避免沿用上一请求的已解析用户）
+        $this->refreshAuth()->withHeader('Authorization', "Bearer {$oldToken}")
+            ->getJson('/api/me')->assertStatus(401);
+
+        // 新密码可登录
+        $this->postJson('/api/login', [
+            'account' => 'reset_agent', 'password' => $newPassword,
+        ])->assertOk();
+    }
+
     public function test_users_list_is_admin_only(): void
     {
         $this->actingAsApi($this->makeUser('agent'))->getJson('/api/users')->assertStatus(403);

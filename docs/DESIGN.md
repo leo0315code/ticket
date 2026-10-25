@@ -236,6 +236,11 @@ Laravel 通知（database+mail+Gateway 通道）─GatewayClient──▶ Regist
 - 前端 `resources/js/realtime.js`：WebSocket 接入 + 5s 断线重连；铃铛收到推送实时 +1 未读数并弹 ElNotification toast（点击跳工单）；30s 轮询保留作为兜底
 - 配置：`.env` 的 `GATEWAY_REGISTER_ADDRESS` / `GATEWAY_PUBLIC_WS_URL` / `GATEWAY_HOST` / `GATEWAY_SSL*`；**测试环境**（phpunit.xml）把 register 地址指到不可达端口，避免测试推送泄漏到真实连接
 
+### 后台账号管理（v2.14）
+- 管理员可在"用户管理"**新增账号**（姓名/账号/角色 user|agent|admin/邮箱选填/初始密码可随机生成）——客服不再依赖种子数据
+- **重置密码**：生成 12 位随机密码，仅响应中一次性返回（对话框展示+复制），并吊销该用户全部 token（强制重新登录）
+- phpunit 52/205 全绿（创建→登录、重置→旧 token 失效→新密码登录闭环）
+
 ### 后台登录防护（v2.13：滑块行为验证 + 登录限流）
 - 滑块验证（自建，零外部依赖）：`GET /api/captcha/issue` 签发 5 分钟 key → 前端拖到底 `POST /api/captcha/verify` 核销换一次性 ticket → `POST /api/admin/login`（后台专用端点）核销 ticket 放行；key/ticket 均一次性，防重放
 - 客户端 `/api/login` 不需要滑块，但与后台登录共用**限流**：每 账号+IP 每分钟 `LOGIN_RATE_LIMIT`（默认 10，可 .env 调）次，超出 429

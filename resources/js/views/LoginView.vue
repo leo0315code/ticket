@@ -184,6 +184,14 @@ async function doRegister() {
     width: 100%;
     margin-top: 4px;
 }
+@media (max-width: 768px) {
+    .brand-side {
+        display: none;
+    }
+    .panel {
+        width: 420px;
+    }
+}
 .tips {
     margin-top: 18px;
     font-size: 12px;

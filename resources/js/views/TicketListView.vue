@@ -57,7 +57,7 @@
         </el-form>
 
         <el-table :data="tickets" v-loading="loading" stripe>
-            <el-table-column prop="no" label="工单号" width="160" />
+            <el-table-column prop="no" label="工单号" width="160" class-name="hide-md" />
             <el-table-column prop="title" label="标题" min-width="220">
                 <template #default="{ row }">
                     <el-link type="primary" @click="$router.push(`/tickets/${row.id}`)">{{ row.title }}</el-link>
@@ -74,7 +74,7 @@
                     <el-tag :type="PRIORITY_MAP[row.priority].type" effect="plain" size="small">{{ PRIORITY_MAP[row.priority].label }}</el-tag>
                 </template>
             </el-table-column>
-            <el-table-column label="分类" width="110">
+            <el-table-column label="分类" width="110" class-name="hide-md">
                 <template #default="{ row }">{{ row.category?.name || '-' }}</template>
             </el-table-column>
             <el-table-column label="提交人" width="120">
@@ -94,8 +94,8 @@
                     <span v-else style="color: var(--el-text-color-secondary)">-</span>
                 </template>
             </el-table-column>
-            <el-table-column prop="replies_count" label="回复" width="70" align="center" />
-            <el-table-column prop="created_at" label="创建时间" width="150" />
+            <el-table-column prop="replies_count" label="回复" width="70" align="center" class-name="hide-md" />
+            <el-table-column prop="created_at" label="创建时间" width="150" class-name="hide-sm" />
         </el-table>
 
         <el-pagination
@@ -246,5 +246,27 @@ onMounted(async () => {
 .ov-label {
     color: var(--el-text-color-secondary);
     font-size: 13px;
+}
+@media (max-width: 768px) {
+    .overview :deep(.el-col) {
+        margin-bottom: 8px;
+    }
+    .ov-num {
+        font-size: 20px;
+    }
+    /* 移动端隐藏次要表格列 */
+    :deep(.hide-md) {
+        display: none;
+    }
+}
+@media (max-width: 480px) {
+    :deep(.hide-sm) {
+        display: none;
+    }
+    .filters :deep(.el-form-item) {
+        margin-right: 0;
+        margin-bottom: 8px;
+        width: 100%;
+    }
 }
 </style>

@@ -7,7 +7,7 @@
         </el-page-header>
 
         <el-row :gutter="16">
-            <el-col :span="16">
+            <el-col :xs="24" :sm="16">
                 <el-card>
                     <el-descriptions :column="3" border size="small" style="margin-bottom: 16px">
                         <el-descriptions-item label="状态">
@@ -93,7 +93,7 @@
                 </el-card>
             </el-col>
 
-            <el-col :span="8">
+            <el-col :xs="24" :sm="8">
                 <el-card v-if="auth.isStaff" header="处理操作">
                     <el-form label-width="80px" size="default">
                         <el-form-item label="状态">
@@ -550,5 +550,10 @@ onMounted(async () => {
 .attach-meta {
     color: #909399;
     font-size: 12px;
+}
+@media (max-width: 768px) {
+    .chat-main {
+        max-width: 88%;
+    }
 }
 </style>

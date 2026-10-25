@@ -1,7 +1,7 @@
 <template>
     <div v-loading="loading">
         <el-row :gutter="16">
-            <el-col :span="6" v-for="c in cards" :key="c.label">
+            <el-col :xs="12" :sm="6" v-for="c in cards" :key="c.label">
                 <el-card>
                     <div class="stat-num" :style="{ color: c.color }">{{ c.value }}</div>
                     <div class="stat-label">{{ c.label }}</div>
@@ -10,17 +10,17 @@
         </el-row>
 
         <el-row :gutter="16" style="margin-top: 16px">
-            <el-col :span="12">
+            <el-col :xs="24" :sm="12">
                 <el-card header="近 7 天新增工单">
                     <div ref="trendRef" class="chart"></div>
                 </el-card>
             </el-col>
-            <el-col :span="6">
+            <el-col :xs="24" :sm="6">
                 <el-card header="状态分布">
                     <div ref="statusRef" class="chart"></div>
                 </el-card>
             </el-col>
-            <el-col :span="6">
+            <el-col :xs="24" :sm="6">
                 <el-card header="优先级分布">
                     <div ref="priorityRef" class="chart"></div>
                 </el-card>

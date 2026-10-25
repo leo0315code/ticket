@@ -34,3 +34,17 @@ html.dark .header {
     background: #141414;
     border-bottom-color: #2b2b2c;
 }
+
+/* 移动端适配（≤768px） */
+@media (max-width: 768px) {
+    .el-header {
+        padding: 0 12px !important;
+    }
+    .header .brand {
+        margin-right: 12px;
+        font-size: 16px;
+    }
+    .el-main {
+        padding: 12px !important;
+    }
+}

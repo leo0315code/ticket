@@ -119,6 +119,60 @@ class AdminTest extends ApiTestCase
         ])->assertOk();
     }
 
+    public function test_bulk_close_and_assign(): void
+    {
+        $agent = $this->makeUser('agent', ['username' => 'bulk_agent']);
+        $target = $this->makeUser('agent', ['username' => 'target_agent']);
+        $t1 = \App\Models\Ticket::factory()->create(['user_id' => $this->makeUser()->id, 'status' => 'open']);
+        $t2 = \App\Models\Ticket::factory()->create(['user_id' => $this->makeUser()->id, 'status' => 'in_progress']);
+        $closed = \App\Models\Ticket::factory()->create(['user_id' => $this->makeUser()->id, 'status' => 'closed']);
+
+        // 批量关闭：跳过已关闭
+        $res = $this->actingAsApi($agent)->postJson('/api/tickets/bulk', [
+            'ids' => [$t1->id, $t2->id, $closed->id], 'action' => 'close',
+        ])->assertOk();
+        $this->assertSame(2, $res->json('count'));
+        $this->assertSame('closed', $t1->fresh()->status);
+        $this->assertNotNull($t2->fresh()->closed_at);
+        $this->assertDatabaseHas('ticket_logs', ['ticket_id' => $t1->id, 'action' => 'status_changed']);
+
+        // 批量指派
+        $res2 = $this->actingAsApi($agent)->postJson('/api/tickets/bulk', [
+            'ids' => [$t1->id], 'action' => 'assign', 'agent_id' => $target->id,
+        ])->assertOk();
+        $this->assertSame(1, $res2->json('count'));
+        $this->assertSame($target->id, $t1->fresh()->agent_id);
+
+        // 普通用户 403
+        $this->actingAsApi($this->makeUser())->postJson('/api/tickets/bulk', [
+            'ids' => [$t1->id], 'action' => 'close',
+        ])->assertStatus(403);
+    }
+
+    public function test_stats_include_by_agent_performance(): void
+    {
+        $this->actingAsApi($this->makeUser('agent'))->getJson('/api/stats')
+            ->assertOk()
+            ->assertJsonStructure(['by_agent' => [['id', 'name', 'assigned', 'closed', 'avg_response_min', 'avg_rating']]]);
+    }
+
+    public function test_logs_endpoint_filters_and_paginates(): void
+    {
+        $agent = $this->makeUser('agent');
+        $ticket = \App\Models\Ticket::factory()->create(['user_id' => $this->makeUser()->id]);
+        $ticket->log('created', $agent->id, '创建工单【测试】');
+
+        $res = $this->actingAsApi($agent)->getJson('/api/logs')->assertOk();
+        $this->assertGreaterThanOrEqual(1, $res->json('meta.total'));
+
+        // 按动作筛选
+        $res2 = $this->actingAsApi($agent)->getJson('/api/logs?action=created')->assertOk();
+        $this->assertSame('created', $res2->json('data.0.action'));
+
+        // 普通用户 403
+        $this->actingAsApi($this->makeUser())->getJson('/api/logs')->assertStatus(403);
+    }
+
     public function test_users_list_is_admin_only(): void
     {
         $this->actingAsApi($this->makeUser('agent'))->getJson('/api/users')->assertStatus(403);

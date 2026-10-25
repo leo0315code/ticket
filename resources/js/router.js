@@ -20,6 +20,7 @@ const routes = [
             { path: 'categories', component: () => import('./views/CategoriesView.vue'), meta: { admin: true } },
             { path: 'users', component: () => import('./views/UsersView.vue'), meta: { admin: true } },
             { path: 'faqs', component: () => import('./views/FaqView.vue') },
+            { path: 'logs', component: () => import('./views/LogsView.vue'), meta: { staff: true } },
             { path: '', redirect: 'tickets' },
         ],
     },

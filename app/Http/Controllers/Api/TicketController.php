@@ -142,7 +142,50 @@ class TicketController extends Controller
         ));
     }
 
+    /** 批量操作：批量关闭 / 批量指派（staff） */
+    public function bulk(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'ids' => ['required', 'array', 'min:1', 'max:50'],
+            'ids.*' => ['integer', 'exists:tickets,id'],
+            'action' => ['required', 'in:close,assign'],
+            'agent_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->whereIn('role', ['agent', 'admin'])],
+        ]);
+
+        $tickets = Ticket::whereIn('id', $data['ids'])->get();
+        $count = 0;
+
+        foreach ($tickets as $ticket) {
+            if ($data['action'] === 'close') {
+                if ($ticket->status === 'closed') {
+                    continue;
+                }
+                $ticket->update([
+                    'status' => 'closed',
+                    'resolved_at' => $ticket->resolved_at ?? now(),
+                    'closed_at' => $ticket->closed_at ?? now(),
+                ]);
+                $ticket->log('status_changed', $request->user()->id, '状态：已关闭（批量操作）');
+                $ticket->user->notify(new \App\Notifications\TicketEventNotification(
+                    $ticket, "您的工单 {$ticket->no} 已被批量关闭", 'updated'
+                ));
+            } else {
+                $agent = User::find($data['agent_id']);
+                if (! $agent || $ticket->agent_id === $agent->id) {
+                    continue;
+                }
+                $oldName = $ticket->agent?->name ?? '未指派';
+                $ticket->update(['agent_id' => $agent->id]);
+                $ticket->log('assigned', $request->user()->id, "{$oldName} → {$agent->name}（批量指派）");
+            }
+            $count++;
+        }
+
+        return response()->json(['message' => "已处理 {$count} 张工单", 'count' => $count]);
+    }
+
     /** 提交人满意度评价（仅已关闭且未评价） */
+
     public function rate(Request $request, Ticket $ticket): JsonResponse
     {
         if ($ticket->user_id !== $request->user()->id) {

@@ -61,7 +61,21 @@
             </el-form-item>
         </el-form>
 
-        <el-table :data="tickets" v-loading="loading" stripe>
+        <div v-if="selection.length > 0" class="bulk-bar">
+            <span>已选 {{ selection.length }} 项</span>
+            <el-popconfirm :title="`确认关闭选中的 ${selection.length} 张工单？`" @confirm="bulkAction('close')">
+                <template #reference>
+                    <el-button size="small" type="warning" :loading="bulkLoading">批量关闭</el-button>
+                </template>
+            </el-popconfirm>
+            <el-select v-model="bulkAgentId" size="small" placeholder="批量指派给…" style="width: 150px">
+                <el-option v-for="a in agents" :key="a.id" :label="a.name" :value="a.id" />
+            </el-select>
+            <el-button size="small" type="primary" :disabled="!bulkAgentId" :loading="bulkLoading" @click="bulkAction('assign')">指派</el-button>
+        </div>
+
+        <el-table :data="tickets" v-loading="loading" stripe @selection-change="(rows) => (selection = rows)">
+            <el-table-column v-if="auth.isStaff" type="selection" width="42" />
             <el-table-column prop="no" label="工单号" width="160" class-name="hide-md" />
             <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip>
                 <template #default="{ row }">
@@ -131,6 +145,35 @@ const total = ref(0);
 const page = ref(1);
 const loading = ref(false);
 const exporting = ref(false);
+const selection = ref([]);
+const agents = ref([]);
+const bulkAgentId = ref('');
+const bulkLoading = ref(false);
+
+async function loadAgents() {
+    if (! auth.isStaff) return;
+    const { data } = await http.get('/agents');
+    agents.value = data.data;
+}
+
+async function bulkAction(action) {
+    bulkLoading.value = true;
+    try {
+        const { data } = await http.post('/tickets/bulk', {
+            ids: selection.value.map((r) => r.id),
+            action,
+            agent_id: action === 'assign' ? bulkAgentId.value : undefined,
+        });
+        ElMessage.success(data.message);
+        selection.value = [];
+        bulkAgentId.value = '';
+        await load();
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '操作失败');
+    } finally {
+        bulkLoading.value = false;
+    }
+}
 const mine = ref(null);
 const showFilters = ref(false);
 const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
@@ -217,6 +260,7 @@ function reset() {
 onMounted(async () => {
     load(1);
     loadMine();
+    loadAgents();
     const { data } = await http.get('/categories');
     categories.value = data.data;
 });
@@ -230,6 +274,16 @@ onMounted(async () => {
 }
 .filters {
     margin-bottom: 4px;
+}
+.bulk-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 8px 12px;
+    background: var(--el-color-primary-light-9);
+    border-radius: 8px;
+    font-size: 13px;
 }
 .person {
     display: flex;

@@ -14,6 +14,11 @@ class TicketLogResource extends JsonResource
             'action' => $this->action,
             'detail' => $this->detail,
             'user' => new UserResource($this->whenLoaded('user')),
+            'ticket' => $this->whenLoaded('ticket', fn () => [
+                'id' => $this->ticket->id,
+                'no' => $this->ticket->no,
+                'title' => $this->ticket->title,
+            ]),
             'created_at' => $this->created_at->format('Y-m-d H:i'),
         ];
     }

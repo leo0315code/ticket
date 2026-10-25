@@ -10,6 +10,24 @@
         </el-row>
 
         <el-row :gutter="16" style="margin-top: 16px">
+            <el-col :xs="24">
+                <el-card header="客服绩效">
+                    <el-table :data="stats?.by_agent || []" size="small" stripe>
+                        <el-table-column prop="name" label="客服" width="120" />
+                        <el-table-column prop="assigned" label="受理工单" align="center" />
+                        <el-table-column prop="closed" label="已关闭" align="center" />
+                        <el-table-column label="平均首次响应" align="center">
+                            <template #default="{ row }">{{ row.avg_response_min !== null ? row.avg_response_min + ' 分钟' : '—' }}</template>
+                        </el-table-column>
+                        <el-table-column label="满意度" align="center">
+                            <template #default="{ row }">{{ row.avg_rating !== null ? row.avg_rating + ' ★' : '—' }}</template>
+                        </el-table-column>
+                    </el-table>
+                </el-card>
+            </el-col>
+        </el-row>
+
+        <el-row :gutter="16" style="margin-top: 16px">
             <el-col :xs="24" :sm="12">
                 <el-card header="近 7 天新增工单">
                     <div ref="trendRef" class="chart"></div>

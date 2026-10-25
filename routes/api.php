@@ -12,6 +12,7 @@ use App\Http\Controllers\Api\ReplyController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketExportController;
+use App\Http\Controllers\Api\TicketLogController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
@@ -26,6 +27,8 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('tickets/export', [TicketExportController::class, 'index'])->middleware('staff');
+    Route::post('tickets/bulk', [TicketController::class, 'bulk'])->middleware('staff');
+    Route::get('logs', [TicketLogController::class, 'index'])->middleware('staff');
     Route::apiResource('tickets', TicketController::class);
     Route::post('/tickets/{ticket}/rating', [TicketController::class, 'rate']);
     Route::apiResource('tickets.replies', ReplyController::class)->only(['index', 'store']);

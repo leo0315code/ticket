@@ -8,6 +8,7 @@
                 <el-menu-item :index="adminPath('tickets/new')">新建工单</el-menu-item>
                 <el-menu-item :index="adminPath('faqs')">知识库</el-menu-item>
                 <el-menu-item v-if="auth.isStaff" :index="adminPath('dashboard')">统计看板</el-menu-item>
+            <el-menu-item v-if="auth.isStaff" :index="adminPath('logs')">操作审计</el-menu-item>
                 <el-menu-item v-if="auth.isAdmin" :index="adminPath('categories')">分类管理</el-menu-item>
                 <el-menu-item v-if="auth.isAdmin" :index="adminPath('users')">用户管理</el-menu-item>
             </el-menu>
@@ -58,7 +59,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowDown, Moon, Sunny, Tickets, EditPen, Collection, DataLine, Files, User } from '@element-plus/icons-vue';
+import { ArrowDown, Moon, Sunny, Tickets, EditPen, Collection, DataLine, Files, User, List } from '@element-plus/icons-vue';
 import NotificationBell from './NotificationBell.vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
@@ -78,7 +79,7 @@ const mobileTabs = computed(() => [
     { path: adminPath('tickets'), label: '工单', icon: Tickets },
     { path: adminPath('tickets/new'), label: '新建', icon: EditPen },
     { path: adminPath('faqs'), label: '知识库', icon: Collection },
-    ...(auth.isStaff ? [{ path: adminPath('dashboard'), label: '看板', icon: DataLine }] : []),
+    ...(auth.isStaff ? [{ path: adminPath('dashboard'), label: '看板', icon: DataLine }, { path: adminPath('logs'), label: '审计', icon: List }] : []),
     ...(auth.isAdmin ? [{ path: adminPath('categories'), label: '分类', icon: Files }, { path: adminPath('users'), label: '用户', icon: User }] : []),
 ]);
 

@@ -236,6 +236,11 @@ Laravel 通知（database+mail+Gateway 通道）─GatewayClient──▶ Regist
 - 前端 `resources/js/realtime.js`：WebSocket 接入 + 5s 断线重连；铃铛收到推送实时 +1 未读数并弹 ElNotification toast（点击跳工单）；30s 轮询保留作为兜底
 - 配置：`.env` 的 `GATEWAY_REGISTER_ADDRESS` / `GATEWAY_PUBLIC_WS_URL` / `GATEWAY_HOST` / `GATEWAY_SSL*`；**测试环境**（phpunit.xml）把 register 地址指到不可达端口，避免测试推送泄漏到真实连接
 
+### 后台增强（v2.15）
+- **工单批量操作**：列表多选（staff）→ 批量关闭 / 批量指派（`POST /api/tickets/bulk`，≤50 张；已关闭自动跳过；关闭通知提交人；写操作日志）
+- **客服绩效**：看板新增绩效表（受理工单/已关闭/平均首次响应分钟/满意度均分）——`GET /api/stats` 增加 `by_agent`（响应时长 PHP 层计算，兼容 SQLite/MySQL）
+- **操作审计页**：`/panel/logs`（staff），全量操作流水分页 + 按工单号/标题/动作筛选，动作彩色标签，点击直达工单
+
 ### 后台账号管理（v2.14）
 - 管理员可在"用户管理"**新增账号**（姓名/账号/角色 user|agent|admin/邮箱选填/初始密码可随机生成）——客服不再依赖种子数据
 - **重置密码**：生成 12 位随机密码，仅响应中一次性返回（对话框展示+复制），并吊销该用户全部 token（强制重新登录）

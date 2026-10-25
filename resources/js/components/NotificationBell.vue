@@ -33,6 +33,7 @@ import { Bell } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
 import http from '../api';
 import { connectRealtime, fetchNotifications } from '../realtime';
+import { ticketPath } from '../router';
 import { playNotifySound } from '../utils/sound';
 
 const unread = ref(0);
@@ -61,7 +62,7 @@ connectRealtime((payload) => {
                 message: payload.message,
                 type: payload.event === 'sla_breach' ? 'error' : 'info',
                 duration: 5000,
-                onClick: () => router.push(`/tickets/${payload.ticket_id}`),
+                onClick: () => router.push(ticketPath(payload.ticket_id)),
             });
         }
     }
@@ -73,7 +74,7 @@ async function goTicket(n) {
     }
     open.value = false;
     await load();
-    router.push(`/tickets/${n.ticket_id}`);
+    router.push(ticketPath(n.ticket_id));
 }
 
 async function markAll() {

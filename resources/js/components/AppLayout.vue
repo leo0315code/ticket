@@ -1,15 +1,15 @@
 <template>
     <el-container class="layout">
         <el-header class="header">
-            <div class="brand" @click="$router.push('/')">🎫 工单系统</div>
+            <div class="brand" @click="$router.push('/admin/tickets')">🎫 工单系统</div>
             <!-- 桌面端横向菜单 -->
             <el-menu v-if="!isMobile" mode="horizontal" :default-active="active" router :ellipsis="false" class="menu">
-                <el-menu-item index="/">我的工单</el-menu-item>
-                <el-menu-item index="/tickets/new">新建工单</el-menu-item>
-                <el-menu-item index="/faqs">知识库</el-menu-item>
-                <el-menu-item v-if="auth.isStaff" index="/dashboard">统计看板</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" index="/categories">分类管理</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" index="/users">用户管理</el-menu-item>
+                <el-menu-item index="/admin/tickets">我的工单</el-menu-item>
+                <el-menu-item index="/admin/tickets/new">新建工单</el-menu-item>
+                <el-menu-item index="/admin/faqs">知识库</el-menu-item>
+                <el-menu-item v-if="auth.isStaff" index="/admin/dashboard">统计看板</el-menu-item>
+                <el-menu-item v-if="auth.isAdmin" index="/admin/categories">分类管理</el-menu-item>
+                <el-menu-item v-if="auth.isAdmin" index="/admin/users">用户管理</el-menu-item>
             </el-menu>
             <!-- 移动端抽屉菜单 -->
             <el-icon v-else :size="22" class="mobile-menu-btn" @click="mobileMenu = true"><Menu /></el-icon>
@@ -41,12 +41,12 @@
 
         <el-drawer v-model="mobileMenu" direction="rtl" size="60%" :with-header="false">
             <el-menu :default-active="active" router @select="mobileMenu = false">
-                <el-menu-item index="/">我的工单</el-menu-item>
-                <el-menu-item index="/tickets/new">新建工单</el-menu-item>
-                <el-menu-item index="/faqs">知识库</el-menu-item>
-                <el-menu-item v-if="auth.isStaff" index="/dashboard">统计看板</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" index="/categories">分类管理</el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" index="/users">用户管理</el-menu-item>
+                <el-menu-item index="/admin/tickets">我的工单</el-menu-item>
+                <el-menu-item index="/admin/tickets/new">新建工单</el-menu-item>
+                <el-menu-item index="/admin/faqs">知识库</el-menu-item>
+                <el-menu-item v-if="auth.isStaff" index="/admin/dashboard">统计看板</el-menu-item>
+                <el-menu-item v-if="auth.isAdmin" index="/admin/categories">分类管理</el-menu-item>
+                <el-menu-item v-if="auth.isAdmin" index="/admin/users">用户管理</el-menu-item>
             </el-menu>
         </el-drawer>
     </el-container>

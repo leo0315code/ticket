@@ -20,7 +20,7 @@
                 <span>工单列表</span>
                 <div>
                     <el-button v-if="auth.isStaff" :loading="exporting" @click="exportCsv">导出 CSV</el-button>
-                    <el-button type="primary" @click="$router.push('/tickets/new')">新建工单</el-button>
+                    <el-button type="primary" @click="$router.push('/admin/tickets/new')">新建工单</el-button>
                 </div>
             </div>
         </template>

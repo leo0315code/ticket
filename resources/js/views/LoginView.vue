@@ -95,7 +95,7 @@ async function doLogin() {
     error.value = '';
     try {
         await auth.login(form.account, form.password);
-        router.push(auth.user?.role === 'user' ? '/m/tickets' : '/');
+        router.push(auth.user?.role === 'user' ? '/m/tickets' : '/admin/tickets');
     } catch (e) {
         error.value = e.response?.data?.message || '登录失败';
     } finally {

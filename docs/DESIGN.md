@@ -194,6 +194,11 @@
 | SlaTest | overdue 筛选与 isOverdue、closed 永不超时、check-sla 命令通知+日志且每单仅一次、已解决工单不标记 |
 | ExportTest | CSV 导出（BOM、表头、内容）、按筛选导出、普通用户 403 |
 
+### 前端冒烟（v2.12，Playwright）
+- 运行：`npm run e2e`（14 用例，移动+桌面双视口，~10s；复用运行中的本地服务与演示库，用例幂等）
+- 覆盖：客户端登录分流/底部 Tab、staff 客户端登录拒绝、移动端建单→详情、详情回复、user 访问后台弹回、后台登录+列表+回复、后台登录页拒绝普通用户
+- 踩坑：登录页双 tab 有两个"密码"占位（strict locator 需 exact+first）；建单需等 /api/categories 返回（分类默认选中竞态）；回复断言用内容可见而非气泡计数（实时推送会并发追加导致计数抖动）
+
 ### 已知坑（写给后来者）
 - Sanctum 的 `RequestGuard` 会缓存已解析用户，同一测试进程内换 Bearer token 不会重新认证。`ApiTestCase::actingAsApi` 通过 `auth()->forgetGuards()` 丢弃缓存守卫解决；测试令牌注销同理用 `refreshAuth()`。
 - 测试工厂的工单号不要用 `Ticket::nextNo()`（批量创建时基于库内最大序号会撞号），工厂里用 `TK-TEST-<uuid>`。

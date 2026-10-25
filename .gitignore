@@ -28,3 +28,7 @@ Thumbs.db
 /storage/app/gateway.pid
 /storage/ssl
 /gui-test-screenshots
+
+# Playwright
+/test-results/
+/playwright-report/

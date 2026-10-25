@@ -15,10 +15,12 @@ class TicketTest extends ApiTestCase
     {
         $user = $this->makeUser();
 
+        $category = Category::create(['name' => '账号问题']);
         $res = $this->actingAsApi($user)->postJson('/api/tickets', [
             'title' => '无法登录',
             'content' => '一直提示密码错误',
             'priority' => 'urgent',
+            'category_id' => $category->id,
         ]);
 
         $res->assertCreated();
@@ -41,7 +43,7 @@ class TicketTest extends ApiTestCase
 
         $this->actingAsApi($user)->postJson('/api/tickets', [
             'title' => '', 'content' => '', 'priority' => 'whatever',
-        ])->assertStatus(422)->assertJsonValidationErrors(['title', 'content', 'priority']);
+        ])->assertStatus(422)->assertJsonValidationErrors(['title', 'content', 'priority', 'category_id']);
     }
 
     public function test_user_sees_only_own_tickets_while_agent_sees_all(): void

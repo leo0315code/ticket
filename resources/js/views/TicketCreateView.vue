@@ -13,8 +13,8 @@
             <el-form-item label="标题" required>
                 <el-input v-model="form.title" maxlength="100" show-word-limit placeholder="一句话描述问题" />
             </el-form-item>
-            <el-form-item label="分类">
-                <el-select v-model="form.category_id" placeholder="选择分类（可选）" clearable :style="{ width: isMobile ? '100%' : '240px' }">
+            <el-form-item label="分类" required>
+                <el-select v-model="form.category_id" placeholder="请选择分类" clearable :style="{ width: isMobile ? '100%' : '240px' }">
                     <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
                 </el-select>
             </el-form-item>
@@ -107,11 +107,12 @@ const form = reactive({ title: '', content: '', priority: 'medium', category_id:
 onMounted(async () => {
     const { data } = await http.get('/categories');
     categories.value = data.data;
+    if (! form.category_id && data.data.length > 0) form.category_id = data.data[0].id;
 });
 
 async function submit() {
-    if (!form.title || !form.content) {
-        error.value = '请填写标题和内容';
+    if (!form.title || !form.content || !form.category_id) {
+        error.value = '请填写标题、内容并选择分类';
         return;
     }
     loading.value = true;

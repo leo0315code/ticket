@@ -70,19 +70,33 @@ class ReplyTest extends ApiTestCase
         $byUsername = $this->makeUser('agent', ['username' => 'wangwu', 'name' => '小王']);
         $ticket = Ticket::factory()->create(['user_id' => $owner->id, 'agent_id' => $agent->id]);
 
-        $this->actingAsApi($owner)->postJson("/api/tickets/{$ticket->id}/replies", [
+        // 提及仅 staff 可用：由 agent 发起
+        $this->actingAsApi($agent)->postJson("/api/tickets/{$ticket->id}/replies", [
             'content' => '@wangwu 请帮我看下这个问题',
         ])->assertCreated();
 
         Notification::assertSentTo($byUsername, TicketEventNotification::class, fn ($n) => $n->event === 'mentioned');
-        Notification::assertNotSentTo($owner, TicketEventNotification::class);
 
         // 用昵称 @ 提及也兼容
         Notification::fake();
-        $this->actingAsApi($owner)->postJson("/api/tickets/{$ticket->id}/replies", [
+        $this->actingAsApi($agent)->postJson("/api/tickets/{$ticket->id}/replies", [
             'content' => '@小王 再看一下',
         ])->assertCreated();
         Notification::assertSentTo($byUsername, TicketEventNotification::class, fn ($n) => $n->event === 'mentioned');
+    }
+
+    public function test_normal_user_mention_is_ignored(): void
+    {
+        Notification::fake();
+        $owner = $this->makeUser();
+        $mentioned = $this->makeUser('agent', ['username' => 'wangwu', 'name' => '小王']);
+        $ticket = Ticket::factory()->create(['user_id' => $owner->id]);
+
+        $this->actingAsApi($owner)->postJson("/api/tickets/{$ticket->id}/replies", [
+            'content' => '@wangwu 普通用户输入的 @ 不应触发提及通知',
+        ])->assertCreated();
+
+        Notification::assertNotSentTo($mentioned, TicketEventNotification::class, fn ($n) => $n->event === 'mentioned');
     }
 
     public function test_non_participant_cannot_reply(): void

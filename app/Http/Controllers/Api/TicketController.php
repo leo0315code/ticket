@@ -43,7 +43,7 @@ class TicketController extends Controller
             'title' => ['required', 'string', 'max:100'],
             'content' => ['required', 'string', 'max:5000'],
             'priority' => ['required', Rule::in(Ticket::PRIORITIES)],
-            'category_id' => ['nullable', Rule::exists('categories', 'id')],
+            'category_id' => ['required', Rule::exists('categories', 'id')],
         ]);
 
         $ticket = $request->user()->tickets()->create([

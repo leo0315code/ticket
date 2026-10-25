@@ -63,7 +63,7 @@
                                 v-model="reply"
                                 type="textarea"
                                 :rows="3"
-                                placeholder="输入回复内容…（@账号 或 @昵称 可提醒相关同事）"
+                                :placeholder="auth.isStaff ? '输入回复内容…（@账号 可提醒同事）' : '输入回复内容…'"
                                 @input="onReplyInput"
                             />
                             <div v-if="mentionVisible" class="mention-panel">
@@ -215,6 +215,7 @@ let mentionTimer = null;
 
 // 检测光标前是否在输入 @提及，防抖拉取匹配人员
 function onReplyInput() {
+    if (! auth.isStaff) return; // @提及仅客服/管理员可用
     clearTimeout(mentionTimer);
     mentionTimer = setTimeout(() => {
         const el = replyInputRef.value?.textarea ?? replyInputRef.value?.$el?.querySelector('textarea');

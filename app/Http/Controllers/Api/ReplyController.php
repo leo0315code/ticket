@@ -63,8 +63,10 @@ class ReplyController extends Controller
             Notification::send($recipients, new TicketEventNotification($ticket, "{$actor->name} 回复了工单 {$ticket->no}：{$preview}", 'replied'));
         }
 
-        // @提及：优先匹配账号（username），兼容昵称；被提及者收到提醒
-        $mentioned = $this->extractMentions($data['content'])->reject(fn ($u) => $u->id === $actor->id);
+        // @提及：仅客服/管理员可用；普通用户输入的 @ 不解析
+        $mentioned = $actor->isStaff()
+            ? $this->extractMentions($data['content'])->reject(fn ($u) => $u->id === $actor->id)
+            : collect();
         if ($mentioned->isNotEmpty()) {
             Notification::send($mentioned, new TicketEventNotification(
                 $ticket, "{$actor->name} 在工单 {$ticket->no} 中提到了你：{$preview}", 'mentioned'

@@ -20,12 +20,34 @@
                             <template #default="{ row }">{{ row.avg_response_min !== null ? row.avg_response_min + ' 分钟' : '—' }}</template>
                         </el-table-column>
                         <el-table-column label="满意度" align="center">
-                            <template #default="{ row }">{{ row.avg_rating !== null ? row.avg_rating + ' ★' : '—' }}</template>
+                            <template #default="{ row }">
+                                <el-link v-if="row.avg_rating !== null" type="primary" @click="showRatings(row)">{{ row.avg_rating }} ★</el-link>
+                                <span v-else>—</span>
+                            </template>
                         </el-table-column>
                     </el-table>
                 </el-card>
             </el-col>
         </el-row>
+
+        <!-- 评价明细 -->
+        <el-dialog v-model="ratingsDialog" :title="`${ratingsAgent} 的评价明细`" width="640px">
+            <el-table :data="ratingRows" size="small" stripe v-loading="ratingsLoading">
+                <el-table-column label="评分" width="140">
+                    <template #default="{ row }">
+                        <el-rate :model-value="row.rating" disabled size="small" />
+                    </template>
+                </el-table-column>
+                <el-table-column prop="user" label="评价人" width="100" />
+                <el-table-column label="工单" min-width="180">
+                    <template #default="{ row }">
+                        <el-link type="primary" @click="$router.push(ticketPath(row.ticket_id))">{{ row.no }}</el-link>
+                    </template>
+                </el-table-column>
+                <el-table-column prop="comment" label="评语" min-width="140" show-overflow-tooltip />
+                <el-table-column prop="created_at" label="时间" width="100" />
+            </el-table>
+        </el-dialog>
 
         <el-row :gutter="16" style="margin-top: 16px">
             <el-col :xs="24" :sm="12">
@@ -51,9 +73,26 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue';
 import * as echarts from 'echarts';
 import http from '../api';
+import { ticketPath } from '../paths';
 import { STATUS_MAP, PRIORITY_MAP } from '../constants';
 
 const stats = ref(null);
+const ratingsDialog = ref(false);
+const ratingsAgent = ref('');
+const ratingRows = ref([]);
+const ratingsLoading = ref(false);
+
+async function showRatings(row) {
+    ratingsAgent.value = row.name;
+    ratingsDialog.value = true;
+    ratingsLoading.value = true;
+    try {
+        const { data } = await http.get('/stats/ratings', { params: { agent_id: row.id } });
+        ratingRows.value = data.data;
+    } finally {
+        ratingsLoading.value = false;
+    }
+}
 const loading = ref(true);
 const trendRef = ref();
 const statusRef = ref();

@@ -156,6 +156,21 @@ class AdminTest extends ApiTestCase
             ->assertJsonStructure(['by_agent' => [['id', 'name', 'assigned', 'closed', 'avg_response_min', 'avg_rating']]]);
     }
 
+    public function test_ratings_endpoint_lists_agent_reviews_worst_first(): void
+    {
+        $agent = $this->makeUser('agent', ['username' => 'rated_agent']);
+        $t1 = \App\Models\Ticket::factory()->create(['user_id' => $this->makeUser()->id, 'agent_id' => $agent->id, 'status' => 'closed', 'rating' => 5]);
+        $t2 = \App\Models\Ticket::factory()->create(['user_id' => $this->makeUser()->id, 'agent_id' => $agent->id, 'status' => 'closed', 'rating' => 1, 'rating_comment' => '太慢了']);
+        \App\Models\Ticket::factory()->create(['user_id' => $this->makeUser()->id, 'agent_id' => $agent->id, 'status' => 'closed']); // 未评价不计入
+
+        $res = $this->actingAsApi($agent)->getJson('/api/stats/ratings?agent_id='.$agent->id)->assertOk();
+        $this->assertCount(2, $res->json('data'));
+        $this->assertSame(1, $res->json('data.0.rating')); // 差评在前
+        $this->assertSame(5, $res->json('data.1.rating'));
+
+        $this->actingAsApi($this->makeUser())->getJson('/api/stats/ratings?agent_id='.$agent->id)->assertStatus(403);
+    }
+
     public function test_logs_endpoint_filters_and_paginates(): void
     {
         $agent = $this->makeUser('agent');

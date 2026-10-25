@@ -125,6 +125,7 @@ class TicketController extends Controller
         // 通知提交人（客服操作时）
         if ($user->isStaff() && $ticket->user_id !== $user->id) {
             $msg = match (true) {
+                (isset($data['status']) && $data['status'] === 'closed') => "您的工单 {$ticket->no} 已关闭，问题是否已解决？欢迎点击评价本次服务",
                 isset($data['status']) => "您的工单 {$ticket->no} 状态更新为「".(Ticket::STATUS_LABELS[$data['status']] ?? $data['status'])."」",
                 isset($data['agent_id']) => "您的工单 {$ticket->no} 已被受理",
                 default => "您的工单 {$ticket->no} 信息已更新",
@@ -167,7 +168,7 @@ class TicketController extends Controller
                 ]);
                 $ticket->log('status_changed', $request->user()->id, '状态：已关闭（批量操作）');
                 $ticket->user->notify(new \App\Notifications\TicketEventNotification(
-                    $ticket, "您的工单 {$ticket->no} 已被批量关闭", 'updated'
+                    $ticket, "您的工单 {$ticket->no} 已被关闭，欢迎评价本次服务", 'updated'
                 ));
             } else {
                 $agent = User::find($data['agent_id']);

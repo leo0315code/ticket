@@ -44,6 +44,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/mention-search', [MentionSearchController::class, 'index']);
     Route::get('/agents', [AgentController::class, 'index'])->middleware('staff');
     Route::get('/stats', [StatsController::class, 'index'])->middleware('staff');
+    Route::get('/stats/ratings', [StatsController::class, 'ratings'])->middleware('staff');
     Route::get('/stats/mine', [StatsController::class, 'mine']);
 
     Route::middleware('admin')->group(function () {

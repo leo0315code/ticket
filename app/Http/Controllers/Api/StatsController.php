@@ -69,6 +69,32 @@ class StatsController extends Controller
         ]);
     }
 
+    /** 某客服的评价明细（staff）：已评价工单列表，按评分升序（差评在前） */
+    public function ratings(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'agent_id' => ['required', 'integer', 'exists:users,id'],
+        ]);
+
+        $rows = Ticket::where('agent_id', $data['agent_id'])
+            ->whereNotNull('rating')
+            ->with('user:id,name')
+            ->orderBy('rating') // 差评在前（1 星最前）
+            ->orderByDesc('id')
+            ->get(['id', 'no', 'title', 'rating', 'rating_comment', 'user_id', 'created_at'])
+            ->map(fn ($t) => [
+                'ticket_id' => $t->id,
+                'no' => $t->no,
+                'title' => $t->title,
+                'rating' => $t->rating,
+                'comment' => $t->rating_comment,
+                'user' => $t->user?->name,
+                'created_at' => $t->created_at->format('Y-m-d'),
+            ]);
+
+        return response()->json(['data' => $rows->values()]);
+    }
+
     /** 当前用户的工单概览（各状态计数） */
     public function mine(Request $request): JsonResponse
     {

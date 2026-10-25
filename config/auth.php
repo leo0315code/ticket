@@ -114,4 +114,8 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+
+    // 登录限流：每分钟每 账号+IP 最大尝试次数
+    'login_rate_limit' => env('LOGIN_RATE_LIMIT', 10),
+
 ];

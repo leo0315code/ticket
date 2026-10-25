@@ -69,7 +69,22 @@ test.describe('desktop 后台（staff）', () => {
     async function loginAdmin(page) {
         await page.goto('/panel/login');
         await page.getByPlaceholder(/账号/).fill(STAFF.account);
-        await page.getByPlaceholder('密码').fill(STAFF.password);
+        await page.getByPlaceholder('密码', { exact: true }).first().fill(STAFF.password);
+
+        // 拖动滑块到最右（行为验证）：等 issue 下发 → 拖 → 等服务端核销
+        const thumb = page.locator('.slider-captcha .thumb');
+        const track = page.locator('.slider-captcha .track');
+        await thumb.waitFor();
+        await page.waitForResponse((r) => r.url().includes('/api/captcha/issue'));
+        await page.waitForTimeout(200);
+        const tb = await thumb.boundingBox();
+        const tr = await track.boundingBox();
+        await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(tr.x + tr.width - tb.width / 2 - 4, tb.y + tb.height / 2, { steps: 12 });
+        await page.mouse.up();
+        await expect(page.locator('.slider-captcha.done')).toBeVisible({ timeout: 8000 });
+
         await page.getByRole('button', { name: '登录后台' }).click();
     }
 
@@ -91,7 +106,20 @@ test.describe('desktop 后台（staff）', () => {
     test('后台登录页拒绝普通用户', async ({ page }) => {
         await page.goto('/panel/login');
         await page.getByPlaceholder(/账号/).fill(USER.account);
-        await page.getByPlaceholder('密码').fill(USER.password);
+        await page.getByPlaceholder('密码', { exact: true }).first().fill(USER.password);
+
+        const thumb = page.locator('.slider-captcha .thumb');
+        const track = page.locator('.slider-captcha .track');
+        await page.waitForResponse((r) => r.url().includes('/api/captcha/issue'));
+        await page.waitForTimeout(200);
+        const tb = await thumb.boundingBox();
+        const tr = await track.boundingBox();
+        await page.mouse.move(tb.x + tb.width / 2, tb.y + tb.height / 2);
+        await page.mouse.down();
+        await page.mouse.move(tr.x + tr.width - tb.width / 2 - 4, tb.y + tb.height / 2, { steps: 12 });
+        await page.mouse.up();
+        await expect(page.locator('.slider-captcha.done')).toBeVisible({ timeout: 8000 });
+
         await page.getByRole('button', { name: '登录后台' }).click();
         await expect(page.getByText('该账号是普通用户，请使用用户端登录')).toBeVisible();
     });

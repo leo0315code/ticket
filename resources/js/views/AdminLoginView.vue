@@ -23,7 +23,16 @@
                         <template #prefix><el-icon><Lock /></el-icon></template>
                     </el-input>
                 </el-form-item>
-                <el-button type="primary" size="large" class="submit" :loading="loading" @click="doLogin">登录后台</el-button>
+
+                <el-form-item>
+                    <div class="captcha-row">
+                        <SliderCaptcha ref="captchaRef" @verified="t => (captchaTicket = t)" />
+                    </div>
+                </el-form-item>
+
+                <el-button type="primary" size="large" class="submit" :loading="loading" :disabled="!captchaTicket" @click="doLogin">
+                    {{ captchaTicket ? '登录后台' : '请先完成滑块验证' }}
+                </el-button>
             </el-form>
 
             <el-alert v-if="error" :title="error" :type="errorType" :closable="false" style="margin-top: 14px" />
@@ -38,12 +47,16 @@ import { User, Lock, Moon, Sunny } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
 import { adminPath } from '../paths';
+import http from '../api';
+import SliderCaptcha from '../components/SliderCaptcha.vue';
 
 const dark = ref(document.documentElement.classList.contains('dark'));
 const loading = ref(false);
 const error = ref('');
 const errorType = ref('error');
 const form = reactive({ account: '', password: '' });
+const captchaTicket = ref(null);
+const captchaRef = ref();
 const auth = useAuthStore();
 const router = useRouter();
 
@@ -51,18 +64,17 @@ async function doLogin() {
     loading.value = true;
     error.value = '';
     try {
-        await auth.login(form.account, form.password);
-        if (! auth.isStaff) {
-            // 普通用户不能从后台入口登录
-            await auth.logout();
-            errorType.value = 'warning';
-            error.value = '该账号是普通用户，请使用用户端登录（客户端入口）';
-            return;
-        }
+        // 后台登录走专用接口：要求滑块一次性票据，后端核销
+        const { data } = await http.post('/admin/login', {
+            ...form,
+            captcha_ticket: captchaTicket.value,
+        });
+        auth.save(data.token, data.user);
         router.push(adminPath('tickets'));
     } catch (e) {
         errorType.value = 'error';
         error.value = e.response?.data?.message || '登录失败';
+        captchaRef.value?.reset();
     } finally {
         loading.value = false;
     }
@@ -104,6 +116,9 @@ async function doLogin() {
     color: var(--el-text-color-secondary);
     font-size: 13px;
     margin: 0;
+}
+.captcha-row {
+    width: 100%;
 }
 .submit {
     width: 100%;

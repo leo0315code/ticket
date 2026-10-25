@@ -236,6 +236,12 @@ Laravel 通知（database+mail+Gateway 通道）─GatewayClient──▶ Regist
 - 前端 `resources/js/realtime.js`：WebSocket 接入 + 5s 断线重连；铃铛收到推送实时 +1 未读数并弹 ElNotification toast（点击跳工单）；30s 轮询保留作为兜底
 - 配置：`.env` 的 `GATEWAY_REGISTER_ADDRESS` / `GATEWAY_PUBLIC_WS_URL` / `GATEWAY_HOST` / `GATEWAY_SSL*`；**测试环境**（phpunit.xml）把 register 地址指到不可达端口，避免测试推送泄漏到真实连接
 
+### 后台登录防护（v2.13：滑块行为验证 + 登录限流）
+- 滑块验证（自建，零外部依赖）：`GET /api/captcha/issue` 签发 5 分钟 key → 前端拖到底 `POST /api/captcha/verify` 核销换一次性 ticket → `POST /api/admin/login`（后台专用端点）核销 ticket 放行；key/ticket 均一次性，防重放
+- 客户端 `/api/login` 不需要滑块，但与后台登录共用**限流**：每 账号+IP 每分钟 `LOGIN_RATE_LIMIT`（默认 10，可 .env 调）次，超出 429
+- 后台登录仍保留"仅 staff"校验（403 拒绝普通用户）
+- e2e 适配：Playwright mouse 模拟拖动（issue 下发等待 + done 状态等待）
+
 ### 通知队列化（v2.2）
 - `TicketEventNotification implements ShouldQueue`：站内信 + 邮件走 database 队列（`QUEUE_CONNECTION=database`），由 `php artisan queue:work` 消费——接真实 SMTP 后邮件不再阻塞回复请求（实测回复接口 ~410ms）
 - Gateway 实时通道通过 `viaConnections()` 指定 **sync 连接**：仍在当前请求内同步推送，保证秒达（实测延迟 ~409ms，即接口返回即送达）

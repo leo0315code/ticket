@@ -6,7 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Str;
 use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
@@ -35,6 +38,8 @@ class AuthController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        $this->ensureIsNotRateLimited($request);
+
         $user = User::where('username', $credentials['account'])
             ->orWhere('email', $credentials['account'])
             ->first();
@@ -44,6 +49,54 @@ class AuthController extends Controller
         }
 
         return response()->json(['token' => $user->createToken('spa')->plainTextToken, 'user' => $user]);
+    }
+
+    /** 后台登录：仅 staff，且必须通过滑块验证（一次性票据） */
+    public function adminLogin(Request $request): JsonResponse
+    {
+        $this->ensureIsNotRateLimited($request);
+
+        $credentials = $request->validate([
+            'account' => ['required', 'string'],
+            'password' => ['required', 'string'],
+            'captcha_ticket' => ['required', 'string'],
+        ]);
+
+        // 核销滑块票据（一次性）
+        if (! Cache::pull('captcha_ticket:'.$credentials['captcha_ticket'])) {
+            return response()->json(['message' => '请先完成滑块验证'], 422);
+        }
+
+        $user = User::where('username', $credentials['account'])
+            ->orWhere('email', $credentials['account'])
+            ->first();
+
+        if (! $user || ! Hash::check($credentials['password'], $user->password)) {
+            return response()->json(['message' => '账号或密码不正确'], 401);
+        }
+
+        if (! $user->isStaff()) {
+            return response()->json(['message' => '该账号是普通用户，请使用用户端登录'], 403);
+        }
+
+        return response()->json(['token' => $user->createToken('spa')->plainTextToken, 'user' => $user]);
+    }
+
+    private function ensureIsNotRateLimited(Request $request): void
+    {
+        $max = (int) config('auth.login_rate_limit', 10);
+
+        if (RateLimiter::tooManyAttempts($this->throttleKey($request), $max)) {
+            $seconds = RateLimiter::availableIn($this->throttleKey($request));
+            abort(429, "尝试过于频繁，请 {$seconds} 秒后重试");
+        }
+
+        RateLimiter::hit($this->throttleKey($request));
+    }
+
+    private function throttleKey(Request $request): string
+    {
+        return Str::lower($request->input('account')).'|'.$request->ip();
     }
 
     public function logout(Request $request): JsonResponse

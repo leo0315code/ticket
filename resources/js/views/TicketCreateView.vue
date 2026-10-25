@@ -26,7 +26,7 @@
         <el-alert type="info" :closable="false">
             <template #title>
                 提交前建议先查
-                <el-link type="primary" @click="$router.push(route.path.startsWith('/m') ? '/m/faqs' : '/admin/faqs')">知识库</el-link>
+                <el-link type="primary" @click="$router.push(route.path.startsWith('/m') ? '/m/faqs' : adminPath('faqs'))">知识库</el-link>
                 ，常见问题可立即解决；回复中输入
                 <b>@用户名</b> 可提醒相关同事。
             </template>
@@ -41,6 +41,7 @@ import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import http from '../api';
 import { useAuthStore } from '../stores/auth';
+import { adminPath, ticketPath } from '../paths';
 import { PRIORITY_MAP } from '../constants';
 
 const router = useRouter();
@@ -69,7 +70,7 @@ async function submit() {
             category_id: form.category_id || null,
         });
         ElMessage.success(`工单 ${data.no} 创建成功`);
-        router.push(auth.isStaff && route.path.startsWith('/admin') ? `/admin/tickets/${data.id}` : `/m/tickets/${data.id}`);
+        router.push(auth.isStaff && !route.path.startsWith('/m') ? ticketPath(data.id) : `/m/tickets/${data.id}`);
     } catch (e) {
         error.value = e.response?.data?.message || '提交失败';
     } finally {

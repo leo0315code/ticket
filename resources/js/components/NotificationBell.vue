@@ -33,7 +33,7 @@ import { Bell } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
 import http from '../api';
 import { connectRealtime, fetchNotifications } from '../realtime';
-import { ticketPath } from '../router';
+import { ticketPath } from '../paths';
 import { playNotifySound } from '../utils/sound';
 
 const unread = ref(0);

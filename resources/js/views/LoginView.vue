@@ -80,6 +80,7 @@ import { ElMessage } from 'element-plus';
 import { User, Lock, Postcard, Message, Moon, Sunny } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
+import { homePath } from '../paths';
 
 const dark = ref(document.documentElement.classList.contains('dark'));
 const tab = ref('login');
@@ -95,7 +96,7 @@ async function doLogin() {
     error.value = '';
     try {
         await auth.login(form.account, form.password);
-        router.push(auth.user?.role === 'user' ? '/m/tickets' : '/admin/tickets');
+        router.push(homePath());
     } catch (e) {
         error.value = e.response?.data?.message || '登录失败';
     } finally {

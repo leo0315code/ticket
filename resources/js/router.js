@@ -1,18 +1,15 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { ADMIN_BASE, adminPath, homePath, isAdminRoute, ticketPath } from './paths';
 import { useAuthStore } from './stores/auth';
 
-/** 按角色返回工单详情路径（铃铛/跳转共用） */
-export function ticketPath(id) {
-    const auth = useAuthStore();
-    return auth.user?.role === 'user' ? `/m/tickets/${id}` : `/admin/tickets/${id}`;
-}
+export { ticketPath };
 
 const routes = [
     { path: '/login', component: () => import('./views/LoginView.vue'), meta: { guest: true } },
 
-    // 管理后台（管理员/客服）
+    // 管理后台（管理员/客服）——路径前缀由 .env ADMIN_PATH 配置，避免使用易猜的 admin
     {
-        path: '/admin',
+        path: ADMIN_BASE,
         component: () => import('./components/AppLayout.vue'),
         children: [
             { path: 'tickets', component: () => import('./views/TicketListView.vue') },
@@ -40,32 +37,21 @@ const routes = [
         ],
     },
 
-    // 根路径与旧链接兼容
+    // 根路径按角色分流；旧链接兼容（/admin 不再指向后台，统一送去登录页——不暴露后台存在）
     { path: '/', redirect: () => homePath() },
     { path: '/tickets/:id(\\d+)', redirect: (to) => ticketPath(to.params.id) },
-    { path: '/tickets/new', redirect: () => `${homePath()}/tickets/new` },
-    { path: '/dashboard', redirect: '/admin/dashboard' },
-    { path: '/categories', redirect: '/admin/categories' },
-    { path: '/users', redirect: '/admin/users' },
-    { path: '/faqs', redirect: () => `${homePath() === '/admin' ? '/admin' : '/m'}/faqs` },
+    { path: '/:pathMatch(.*)*', redirect: '/login' },
 ];
-
-function homePath() {
-    const auth = useAuthStore();
-    return auth.user?.role === 'user' ? '/m/tickets' : '/admin/tickets';
-}
 
 const router = createRouter({ history: createWebHistory(), routes });
 
 router.beforeEach((to) => {
     const auth = useAuthStore();
-    if (!to.meta.guest && !auth.isLoggedIn) {
-        return to.path.startsWith('/admin') ? '/login' : '/login';
-    }
+    if (!to.meta.guest && !auth.isLoggedIn) return '/login';
     if (to.meta.staff && !auth.isStaff) return '/m/tickets';
     if (to.meta.admin && !auth.isAdmin) return '/m/tickets';
     // 普通用户不能进管理后台
-    if (auth.isLoggedIn && auth.user?.role === 'user' && to.path.startsWith('/admin')) {
+    if (auth.isLoggedIn && auth.user?.role === 'user' && isAdminRoute(to.path)) {
         return '/m/tickets';
     }
     if (to.path === '/login' && auth.isLoggedIn) {

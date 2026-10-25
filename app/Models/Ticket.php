@@ -1,0 +1,130 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class Ticket extends Model
+{
+    use HasFactory;
+    public const STATUSES = ['open', 'in_progress', 'pending_resolved', 'closed'];
+    public const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
+    public const STATUS_LABELS = [
+        'open' => '待处理',
+        'in_progress' => '处理中',
+        'pending_resolved' => '待确认',
+        'closed' => '已关闭',
+    ];
+    public const PRIORITY_LABELS = [
+        'low' => '低',
+        'medium' => '中',
+        'high' => '高',
+        'urgent' => '紧急',
+    ];
+
+    /** SLA 响应时限（小时），按优先级 */
+    public const SLA_HOURS = [
+        'urgent' => 4,
+        'high' => 8,
+        'medium' => 24,
+        'low' => 72,
+    ];
+
+    protected $fillable = [
+        'no', 'title', 'content', 'status', 'priority',
+        'user_id', 'agent_id', 'category_id',
+        'resolved_at', 'closed_at', 'rating', 'rating_comment',
+        'sla_due_at', 'first_response_at',
+    ];
+
+    protected function casts(): array
+    {
+        return [
+            'created_at' => 'datetime',
+            'updated_at' => 'datetime',
+            'resolved_at' => 'datetime',
+            'closed_at' => 'datetime',
+            'sla_due_at' => 'datetime',
+            'first_response_at' => 'datetime',
+        ];
+    }
+
+    public function isOverdue(): bool
+    {
+        return in_array($this->status, ['open', 'in_progress'], true)
+            && $this->sla_due_at !== null
+            && $this->sla_due_at->isPast();
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function agent(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'agent_id');
+    }
+
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
+    }
+
+    /** @return HasMany<TicketReply, $this> */
+    public function replies(): HasMany
+    {
+        return $this->hasMany(TicketReply::class);
+    }
+
+    /** @return HasMany<TicketLog, $this> */
+    public function logs(): HasMany
+    {
+        return $this->hasMany(TicketLog::class);
+    }
+
+    /** @return HasMany<Attachment, $this> */
+    public function attachments(): HasMany
+    {
+        return $this->hasMany(Attachment::class);
+    }
+
+    public function log(string $action, int $userId, ?string $detail = null): void
+    {
+        $this->logs()->create(['user_id' => $userId, 'action' => $action, 'detail' => $detail]);
+    }
+
+    /** 生成工单号：TK-20261024-0001 */
+    public static function nextNo(): string
+    {
+        $date = now()->format('Ymd');
+        $last = static::where('no', 'like', "TK-{$date}-%")->max('no');
+        $seq = $last ? (int) substr($last, -4) : 0;
+
+        return sprintf('TK-%s-%04d', $date, $seq + 1);
+    }
+
+    /** @param Builder<static> $query */
+    public function scopeFilter(Builder $query, array $filters): void
+    {
+        $query
+            ->when($filters['status'] ?? null, fn (Builder $q, $v) => $q->where('status', $v))
+            ->when($filters['priority'] ?? null, fn (Builder $q, $v) => $q->where('priority', $v))
+            ->when($filters['category_id'] ?? null, fn (Builder $q, $v) => $q->where('category_id', $v))
+            ->when($filters['keyword'] ?? null, function (Builder $q, $v) {
+                $q->where(function (Builder $q) use ($v) {
+                    $q->where('title', 'like', "%{$v}%")->orWhere('no', 'like', "%{$v}%");
+                });
+            })
+            ->when($filters['mine'] ?? null, fn (Builder $q, $v) => $q->where('agent_id', $v))
+            ->when($filters['overdue'] ?? null, function (Builder $q) {
+                $q->whereIn('status', ['open', 'in_progress'])
+                    ->whereNotNull('sla_due_at')
+                    ->where('sla_due_at', '<', now());
+            });
+    }
+}

@@ -1,0 +1,36 @@
+body {
+    margin: 0;
+    background: #f5f7fa;
+    color: #303133;
+    font-family: 'Helvetica Neue', Arial, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+/* 暗黑模式（Element Plus dark css-vars 已覆盖组件，这里补充自定义部分） */
+html.dark body {
+    background: #0c0c0d;
+    color: #e5eaf3;
+    color-scheme: dark;
+}
+html.dark .reply {
+    background: #1d1e1f;
+}
+html.dark .reply.staff {
+    background: #17242f;
+}
+html.dark .tips {
+    background: #1d1e1f;
+    color: #a3a6ad;
+}
+html.dark .nf-msg {
+    color: #e5eaf3;
+}
+html.dark .content {
+    color: #e5eaf3;
+}
+html.dark .bar {
+    background: linear-gradient(180deg, #3375b9, #5a9cdc);
+}
+html.dark .header {
+    background: #141414;
+    border-bottom-color: #2b2b2c;
+}

@@ -57,6 +57,11 @@
                     </div>
 
                     <div class="reply-box">
+                        <div v-for="(f, i) in replyFiles" :key="f.name + i" class="file-chip">
+                            <span class="file-name">{{ f.name }}</span>
+                            <span class="file-size">{{ formatSize(f.size) }}</span>
+                            <el-icon class="file-del" @click="replyFiles.splice(i, 1)"><CircleCloseFilled /></el-icon>
+                        </div>
                         <div class="reply-wrap">
                             <el-input
                                 ref="replyInputRef"
@@ -86,8 +91,17 @@
                                 <div class="mention-tip">↑↓ 选择 · Enter 确认 · Esc 关闭</div>
                             </div>
                         </div>
-                        <div style="margin-top: 8px; text-align: right">
-                            <el-button type="primary" :loading="replying" :disabled="!reply.trim()" @click="sendReply">回复</el-button>
+                        <div class="reply-actions">
+                            <el-upload
+                                :show-file-list="false"
+                                :auto-upload="false"
+                                multiple
+                                accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                                :on-change="addReplyFile"
+                            >
+                                <el-button :loading="replyUploading" title="添加图片/附件">📎 附件</el-button>
+                            </el-upload>
+                            <el-button type="primary" :loading="replying" :disabled="!reply.trim() && replyFiles.length === 0" @click="sendReply">回复</el-button>
                         </div>
                     </div>
                 </el-card>
@@ -181,7 +195,7 @@
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { Document } from '@element-plus/icons-vue';
+import { CircleCloseFilled, Document } from '@element-plus/icons-vue';
 import http from '../api';
 import { connectRealtime } from '../realtime';
 import { avatarColor } from '../utils/avatar';
@@ -205,6 +219,20 @@ const ticket = ref(null);
 const categories = ref([]);
 const agents = ref([]);
 const reply = ref('');
+const replyFiles = ref([]);
+const replyUploading = ref(false);
+
+function addReplyFile(file) {
+    if (file.size > 10 * 1024 * 1024) {
+        ElMessage.warning(`「${file.name}」超过 10MB，未添加`);
+        return;
+    }
+    if (replyFiles.value.length >= 3) {
+        ElMessage.warning('一条回复最多附带 3 个附件');
+        return;
+    }
+    replyFiles.value.push({ name: file.name, size: file.size, raw: file.raw });
+}
 const replying = ref(false);
 const replyInputRef = ref();
 const mentionVisible = ref(false);
@@ -363,10 +391,32 @@ async function load() {
 }
 
 async function sendReply() {
+    if (!reply.value.trim() && replyFiles.value.length === 0) {
+        ElMessage.warning('请输入回复内容或添加附件');
+        return;
+    }
     replying.value = true;
     try {
-        await http.post(`/tickets/${route.params.id}/replies`, { content: reply.value });
+        await http.post(`/tickets/${route.params.id}/replies`, { content: reply.value || '（附件）' });
         reply.value = '';
+        // 回复成功后上传附件（挂到工单附件区）
+        if (replyFiles.value.length > 0) {
+            replyUploading.value = true;
+            let ok = 0;
+            for (const f of replyFiles.value) {
+                try {
+                    const fd = new FormData();
+                    fd.append('file', f.raw);
+                    await http.post(`/tickets/${route.params.id}/attachments`, fd);
+                    ok++;
+                } catch (e) {
+                    ElMessage.warning(`附件「${f.name}」上传失败，可在附件区重试`);
+                }
+            }
+            replyFiles.value = [];
+            if (ok > 0) ElMessage.success(`${ok} 个附件已添加`);
+            replyUploading.value = false;
+        }
         await load();
         ElMessage.success('回复成功');
     } finally {
@@ -491,6 +541,36 @@ onMounted(async () => {
 }
 .reply-box {
     margin-top: 16px;
+}
+.file-chip {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    padding: 8px 12px;
+    background: var(--el-fill-color-light);
+    border-radius: 10px;
+    font-size: 13px;
+}
+.file-chip .file-name {
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.file-chip .file-size {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+}
+.file-chip .file-del {
+    color: var(--el-text-color-secondary);
+    cursor: pointer;
+}
+.reply-actions {
+    margin-top: 8px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
 }
 .reply-wrap {
     position: relative;

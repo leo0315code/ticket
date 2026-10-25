@@ -95,7 +95,7 @@ async function doLogin() {
     error.value = '';
     try {
         await auth.login(form.account, form.password);
-        router.push('/');
+        router.push(auth.user?.role === 'user' ? '/m/tickets' : '/');
     } catch (e) {
         error.value = e.response?.data?.message || '登录失败';
     } finally {
@@ -109,7 +109,7 @@ async function doRegister() {
     try {
         await auth.register(reg.name, reg.username, reg.password, reg.email);
         ElMessage.success('注册成功，欢迎！');
-        router.push('/');
+        router.push('/m/tickets');
     } catch (e) {
         const errors = e.response?.data?.errors;
         error.value = e.response?.data?.message || (errors ? Object.values(errors).flat().join('；') : '注册失败');

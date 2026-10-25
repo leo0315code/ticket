@@ -1,6 +1,6 @@
 <template>
     <div v-if="ticket" class="detail">
-        <el-page-header @back="$router.push('/')" style="margin-bottom: 16px">
+        <el-page-header @back="$router.back()" style="margin-bottom: 16px">
             <template #content>
                 <span style="font-weight: 600">{{ ticket.no }} · {{ ticket.title }}</span>
             </template>

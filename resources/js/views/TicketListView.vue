@@ -1,7 +1,7 @@
 <template>
     <div>
         <el-row :gutter="12" class="overview" v-if="mine">
-            <el-col :span="4" v-for="c in overviewCards" :key="c.key">
+            <el-col :xs="8" :sm="4" v-for="c in overviewCards" :key="c.key">
                 <el-card
                     class="ov-card"
                     :class="{ active: filters.status === (c.key === 'total' ? '' : c.key) }"
@@ -25,7 +25,12 @@
             </div>
         </template>
 
-        <el-form inline class="filters">
+        <div class="filter-bar">
+            <el-button v-if="isMobile" size="small" @click="showFilters = ! showFilters">
+                筛选{{ hasActiveFilters ? ' ●' : '' }}
+            </el-button>
+        </div>
+        <el-form v-show="! isMobile || showFilters" inline class="filters" :class="{ expanded: isMobile }">
             <el-form-item label="关键字">
                 <el-input v-model="filters.keyword" placeholder="标题 / 工单号" clearable @keyup.enter="load(1)" style="width: 180px" />
             </el-form-item>
@@ -58,7 +63,7 @@
 
         <el-table :data="tickets" v-loading="loading" stripe>
             <el-table-column prop="no" label="工单号" width="160" class-name="hide-md" />
-            <el-table-column prop="title" label="标题" min-width="220">
+            <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip>
                 <template #default="{ row }">
                     <el-link type="primary" @click="$router.push(`/tickets/${row.id}`)">{{ row.title }}</el-link>
                 </template>
@@ -126,6 +131,10 @@ const page = ref(1);
 const loading = ref(false);
 const exporting = ref(false);
 const mine = ref(null);
+const showFilters = ref(false);
+const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
+window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMobile.value = e.matches; });
+const hasActiveFilters = computed(() => !!(filters.keyword || filters.status || filters.priority || filters.category_id || filters.mine || filters.overdue));
 const filters = reactive({ keyword: '', status: '', priority: '', category_id: '', mine: false, overdue: false });
 
 const overviewCards = computed(() => {
@@ -258,15 +267,42 @@ onMounted(async () => {
     :deep(.hide-md) {
         display: none;
     }
+    /* 筛选展开后全宽对齐 */
+    .filters.expanded :deep(.el-form-item) {
+        display: block;
+        margin: 0 0 10px;
+    }
+    .filters.expanded :deep(.el-input),
+    .filters.expanded :deep(.el-select) {
+        width: 100% !important;
+    }
+    /* 卡片内边距收紧、头尾对齐 */
+    :deep(.el-card__body),
+    :deep(.el-card__header) {
+        padding: 12px;
+    }
+    :deep(.el-card__header) {
+        padding: 10px 12px;
+    }
+    /* 表格行距收紧 */
+    :deep(.el-table .cell) {
+        padding: 0 6px;
+    }
+    :deep(.el-table td) {
+        padding: 6px 0;
+    }
+    .card-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .card-header > div {
+        display: flex;
+        gap: 8px;
+    }
 }
 @media (max-width: 480px) {
     :deep(.hide-sm) {
         display: none;
-    }
-    .filters :deep(.el-form-item) {
-        margin-right: 0;
-        margin-bottom: 8px;
-        width: 100%;
     }
 }
 </style>

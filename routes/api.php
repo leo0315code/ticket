@@ -28,6 +28,15 @@ Route::get('/captcha/issue', [CaptchaController::class, 'issue'])->middleware('t
 Route::post('/captcha/verify', [CaptchaController::class, 'verify'])->middleware('throttle:30,1');
 Route::get('/meta', [MetaController::class, 'show'])->middleware('throttle:120,1');
 
+// 找回密码（无邮箱账号只能联系管理员，后续可接手机号/公众号验证）
+Route::post('/password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');
+Route::post('/password/reset', [AuthController::class, 'resetPassword'])->middleware('throttle:5,1');
+
+// 公开帮助中心：未登录也能浏览/搜索/反馈（只返回公开条目）
+Route::get('/faqs', [FaqController::class, 'index'])->middleware(['auth.optional', 'throttle:120,1']);
+Route::post('/faqs/{faq}/view', [FaqController::class, 'view'])->middleware('throttle:120,1');
+Route::post('/faqs/{faq}/feedback', [FaqController::class, 'feedback'])->middleware('throttle:60,1');
+
 Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
@@ -51,9 +60,6 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
     Route::post('/notifications/read', [NotificationController::class, 'read']);
 
     Route::get('/categories', [CategoryController::class, 'index']);
-    Route::get('/faqs', [FaqController::class, 'index']);
-    Route::post('/faqs/{faq}/view', [FaqController::class, 'view']);
-    Route::post('/faqs/{faq}/feedback', [FaqController::class, 'feedback']);
     Route::get('/mention-search', [MentionSearchController::class, 'index']);
     Route::get('/stats/mine', [StatsController::class, 'mine']);
     Route::get('/agents', [AgentController::class, 'index'])->middleware('staff');

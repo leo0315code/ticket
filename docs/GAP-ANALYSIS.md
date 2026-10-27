@@ -870,10 +870,12 @@ faqs                                -- 直接扩，不建 kb_articles
 - **实时连接地址修复（v2.21.1）**：`GATEWAY_PUBLIC_WS_URL` 留空时自动按当前站点派生（https → `wss://host/ws`），HTTPS 页面遇到 `ws://` 会自动升级为 `wss://` 并告警；重连不再丢订阅者、改为 3s 起退避；新增 `docs/REALTIME.md`（同源反代 / 网关直开 wss 两种部署方式与排查清单）。
 - **用户详情抽屉（v2.21）**：用户管理点姓名打开抽屉，显示基本信息、提交/受理工单数与进行中数量、最近提交/最近受理的 5 条工单（可直接跳转详情）；接口 `GET /api/users/{user}`，受 `user.manage` 权限控制。
 - **用户管理升级（v2.19）**：搜索（姓名/账号/邮箱）+ 角色筛选 + 启用状态筛选 + 分页 + 最后登录时间；新增「编辑账号」（改姓名/邮箱/角色/启停用）与「停用账号」——停用即踢掉全部登录、再登录返回 403；保留「重置密码」。
+- **公开帮助中心（v2.23）**：`/help` 无需登录即可搜索、按分类浏览、展开阅读、点赞/点踩，只返回 `is_public` 条目；`/api/faqs`、`view`、`feedback` 移到公开路由并限流（可选登录：带 token 的客服仍能看到全部条目）；登录页与移动端帮助中心共用同一份内容；底部“没找到答案 → 登录后提交工单”。
+- **自助找回密码（v2.23）**：登录页「忘记密码？」→ 输入用户名或邮箱 → 若账号绑定邮箱则发送重置链接（`/reset-password?token=…` 前端页面，链接由 `ResetPassword::createUrlUsing` 生成）；重置成功后踢掉该账号全部登录 token；未绑定邮箱的账号提示联系管理员；对不存在的账号返回同一句话防枚举。手机号/公众号验证留作后续扩展（`users.phone` 字段已存在）。
 
 ### 13.4 验证
 
-- `php artisan test`：**111 passed / 488 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 8 条、`TicketScopeTest` 6 条）。
+- `php artisan test`：**120 passed / 518 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
 - 新增迁移 9 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 - 权限约定：接口用 `permission:key` 中间件，前端用 `auth.can('key')`；新增敏感接口时两处都要加。
@@ -902,7 +904,7 @@ faqs                                -- 直接扩，不建 kb_articles
 | 关注者/参与者 | 只有提交人 + 受理人收通知；主管/协作客服无法长期跟进，@提及只在单条回复里 |
 | 合并/关联工单 | 重复报障只能人工沟通 |
 | 解决时限 SLA | 只有首次响应；`pending_resolved` 不停表，无营业时间/暂停 |
-| 找回密码 | 完全没有；有邮箱也没入口，无邮箱只能管理员重置 |
+| 找回密码 | ✅ 已支持邮箱自助重置（v2.23）；手机号/公众号验证待后续 |
 | 通知偏好 | 无用户级「邮件/站内信」开关；只有系统级 `notify_mail` 总开关；邮件模板写死在通知类里 |
 | 公开帮助中心 | `/api/faqs` 本身公开，但前端 `/m/faqs` 需登录；没有匿名可看的帮助中心/公开门户 |
 | 搜索范围 | 只搜标题与编号，不搜工单正文、回复内容 |

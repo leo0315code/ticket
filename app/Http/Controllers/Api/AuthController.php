@@ -10,6 +10,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Password as PasswordBroker;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
@@ -123,6 +124,49 @@ class AuthController extends Controller
         $request->user()->currentAccessToken()->delete();
 
         return response()->json(['message' => '已退出登录']);
+    }
+
+    /** 忘记密码：账号（用户名/邮箱）→ 已绑定邮箱则发送重置链接，未绑定则提示联系管理员 */
+    public function forgotPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate(['account' => ['required', 'string', 'max:100']]);
+        $account = trim($data['account']);
+
+        $user = User::where('username', $account)->orWhere('email', $account)->first();
+
+        // 账号不存在或没绑邮箱也返回同一句话，避免被用来探测账号
+        if ($user && filled($user->email)) {
+            try {
+                PasswordBroker::sendResetLink(['email' => $user->email]);
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
+
+        return response()->json([
+            'message' => '如果该账号绑定了邮箱，重置链接已发送，请查收（含垃圾邮件箱）。未绑定邮箱的账号请联系管理员重置。',
+        ]);
+    }
+
+    public function resetPassword(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'token' => ['required', 'string'],
+            'email' => ['required', 'email'],
+            'password' => ['required', 'string', 'min:8', 'confirmed'],
+        ]);
+
+        $status = PasswordBroker::reset($data, function (User $user, string $password) {
+            $user->forceFill(['password' => Hash::make($password)])->save();
+            // 改密即踢掉所有旧登录
+            $user->tokens()->delete();
+        });
+
+        if ($status !== PasswordBroker::PASSWORD_RESET) {
+            return response()->json(['message' => __($status)], 422);
+        }
+
+        return response()->json(['message' => '密码已重置，请用新密码登录']);
     }
 
     public function me(Request $request): JsonResponse

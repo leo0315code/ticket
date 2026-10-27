@@ -22,6 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'permission' => \App\Http\Middleware\EnsurePermission::class,
             'active' => \App\Http\Middleware\EnsureUserIsActive::class,
+            'auth.optional' => \App\Http\Middleware\OptionalSanctumAuth::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

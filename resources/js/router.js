@@ -41,6 +41,11 @@ const routes = [
         ],
     },
 
+    // 公开页面（无需登录，也不因已登录而跳走）
+    { path: '/help', component: () => import('./views/HelpCenterView.vue'), meta: { public: true } },
+    { path: '/forgot-password', component: () => import('./views/ForgotPasswordView.vue'), meta: { public: true } },
+    { path: '/reset-password', component: () => import('./views/ResetPasswordView.vue'), meta: { public: true } },
+
     // 根路径按角色分流；旧链接兼容（/admin 不再指向后台，统一送去登录页——不暴露后台存在）
     { path: '/', redirect: () => homePath() },
     { path: '/tickets/:id(\\d+)', redirect: (to) => ticketPath(to.params.id) },
@@ -52,7 +57,7 @@ const router = createRouter({ history: createWebHistory(), routes });
 router.beforeEach((to) => {
     const auth = useAuthStore();
     // 未登录：后台去后台登录页，其余去客户端登录页
-    if (!to.meta.guest && !auth.isLoggedIn) {
+    if (!to.meta.guest && !to.meta.public && !auth.isLoggedIn) {
         const loginPath = isAdminRoute(to.path) ? adminPath('login') : '/login';
         // 带上原目标，登录后回跳（邮件深链、分享链接都能落到具体工单）
         return { path: loginPath, query: to.fullPath === '/' ? {} : { redirect: to.fullPath } };

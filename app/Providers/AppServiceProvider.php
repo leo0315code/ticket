@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use App\Models\User;
@@ -19,6 +20,15 @@ class AppServiceProvider extends ServiceProvider
         // 角色权限直接映射成 Gate ability：$user->can('ticket.assign')
         Gate::before(function (User $user, string $ability) {
             return $user->hasPermission($ability) ? true : null;
+        });
+
+        // 密码重置邮件里的链接指向前端页面（默认会指向 Laravel 自带的 password.reset 路由）
+        ResetPassword::createUrlUsing(function (User $user, string $token) {
+            $base = app()->runningInConsole()
+                ? rtrim((string) config('app.url'), '/')
+                : request()->getSchemeAndHttpHost();
+
+            return $base.'/reset-password?'.http_build_query(['token' => $token, 'email' => $user->email]);
         });
 
         // 登录防爆破：每 账号+IP 5 次/分钟

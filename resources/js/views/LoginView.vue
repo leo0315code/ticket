@@ -34,6 +34,10 @@
                                     <template #prefix><el-icon><Lock /></el-icon></template>
                                 </el-input>
                             </el-form-item>
+                            <div class="forgot">
+                                <el-link type="primary" underline="never" @click="$router.push('/forgot-password')">忘记密码？</el-link>
+                                <el-link type="info" underline="never" @click="$router.push('/help')">帮助中心</el-link>
+                            </div>
                             <el-button type="primary" size="large" class="submit" :loading="loading" @click="doLogin">登 录</el-button>
                         </el-form>
                         <div class="tips">
@@ -232,7 +236,13 @@ async function doRegister() {
         letter-spacing: 2px;
         margin-top: 8px;
     }
-    .tips {
+    .forgot {
+    display: flex;
+    justify-content: space-between;
+    margin: -6px 0 10px;
+    font-size: 13px;
+}
+.tips {
         font-size: 12px;
         line-height: 1.9;
         border-radius: 10px;
@@ -241,6 +251,12 @@ async function doRegister() {
     .login-page :deep(.el-alert) {
         border-radius: 10px;
     }
+}
+.forgot {
+    display: flex;
+    justify-content: space-between;
+    margin: -6px 0 10px;
+    font-size: 13px;
 }
 .tips {
     margin-top: 18px;

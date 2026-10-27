@@ -76,6 +76,7 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
 
     // 系统管理
     Route::get('/users', [UserController::class, 'index'])->middleware('permission:user.manage');
+    Route::get('/users/{user}', [UserController::class, 'show'])->middleware('permission:user.manage');
     Route::post('/users', [UserController::class, 'store'])->middleware('permission:user.manage');
     Route::put('/users/{user}', [UserController::class, 'update'])->middleware('permission:user.manage');
     Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:user.manage');

@@ -867,11 +867,12 @@ faqs                                -- 直接扩，不建 kb_articles
 - **系统设置页（v2.18）**：`settings` 表 + `/panel/settings`，可配站点名称、开放注册、邮件通知开关、附件上限、四档 SLA、待确认自动关闭天数、重开窗口与次数；SLA/自动关闭/重开/附件/注册/邮件均改为读设置，不再写死在代码里。
 - **角色与权限（v2.19）**：`roles` 表存 15 项细粒度权限（工单/内容/数据/系统四组），内置「普通用户 / 客服 / 管理员」三个角色，管理员可新建自定义角色（如「售后客服」「数据观察员」）；侧边栏菜单、前端路由、后端接口三层都按权限放行，权限改动即时生效、无需重新登录。
 - **角色数据范围（v2.20）**：每个角色可选「全部工单 / 仅我受理的 / 仅我提交的」，工单列表、详情、回复、CSV 导出都按范围过滤；「全部工单」需同时拥有 `ticket.view_all` 权限，否则自动降级为「仅我受理的」。统计看板仍是团队维度，不随数据范围收窄。
+- **用户详情抽屉（v2.21）**：用户管理点姓名打开抽屉，显示基本信息、提交/受理工单数与进行中数量、最近提交/最近受理的 5 条工单（可直接跳转详情）；接口 `GET /api/users/{user}`，受 `user.manage` 权限控制。
 - **用户管理升级（v2.19）**：搜索（姓名/账号/邮箱）+ 角色筛选 + 启用状态筛选 + 分页 + 最后登录时间；新增「编辑账号」（改姓名/邮箱/角色/启停用）与「停用账号」——停用即踢掉全部登录、再登录返回 403；保留「重置密码」。
 
 ### 13.4 验证
 
-- `php artisan test`：**104 passed / 458 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 8 条、`TicketScopeTest` 6 条）。
+- `php artisan test`：**105 passed / 465 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 8 条、`TicketScopeTest` 6 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
 - 新增迁移 8 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 - 权限约定：接口用 `permission:key` 中间件，前端用 `auth.can('key')`；新增敏感接口时两处都要加。

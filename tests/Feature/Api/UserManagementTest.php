@@ -3,6 +3,7 @@
 namespace Tests\Feature\Api;
 
 use App\Models\Role;
+use App\Models\Ticket;
 use App\Models\User;
 
 class UserManagementTest extends ApiTestCase
@@ -138,5 +139,25 @@ class UserManagementTest extends ApiTestCase
             'password' => 'password123',
             'role' => 'not_exists',
         ])->assertStatus(422);
+    }
+
+    public function test_admin_can_view_user_detail_with_recent_tickets(): void
+    {
+        $admin = $this->makeUser('admin');
+        $agent = $this->makeUser('agent');
+        $owner = $this->makeUser('user', ['name' => '客户张三']);
+
+        Ticket::factory()->create(['user_id' => $owner->id, 'title' => '打印机坏了', 'status' => 'open']);
+        Ticket::factory()->create(['user_id' => $owner->id, 'title' => '历史问题', 'status' => 'closed']);
+        Ticket::factory()->create(['user_id' => $this->makeUser()->id, 'title' => '别人的工单']);
+
+        $res = $this->actingAsApi($admin)->getJson("/api/users/{$owner->id}")->assertOk();
+        $this->assertSame(2, $res->json('stats.submitted'));
+        $this->assertSame(1, $res->json('stats.submitted_active'));
+        $this->assertSame($owner->name, $res->json('user.name'));
+        $this->assertCount(2, $res->json('recent_submitted'));
+        $this->assertSame('打印机坏了', $res->json('recent_submitted.0.title'));
+
+        $this->actingAsApi($agent)->getJson("/api/users/{$owner->id}")->assertForbidden();
     }
 }

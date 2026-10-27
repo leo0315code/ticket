@@ -37,6 +37,27 @@ class UserController extends Controller
     }
 
     /** 新建账号（可指定任意角色，含自定义角色） */
+    /** 用户详情：基本信息 + 工单概要 + 最近工单（管理员视角） */
+    public function show(User $user): JsonResponse
+    {
+        $submitted = $user->tickets();
+        $assigned = $user->assignedTickets();
+        $active = ['open', 'in_progress', 'pending_resolved'];
+        $fields = ['id', 'no', 'title', 'status', 'priority', 'created_at'];
+
+        return response()->json([
+            'user' => new UserResource($user),
+            'stats' => [
+                'submitted' => (clone $submitted)->count(),
+                'submitted_active' => (clone $submitted)->whereIn('status', $active)->count(),
+                'assigned' => (clone $assigned)->count(),
+                'assigned_active' => (clone $assigned)->whereIn('status', $active)->count(),
+            ],
+            'recent_submitted' => (clone $submitted)->latest()->limit(5)->get($fields),
+            'recent_assigned' => (clone $assigned)->latest()->limit(5)->get($fields),
+        ]);
+    }
+
     public function store(Request $request): JsonResponse
     {
         $data = $request->validate([

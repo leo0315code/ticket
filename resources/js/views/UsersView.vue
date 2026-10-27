@@ -29,7 +29,11 @@
 
         <el-table :data="users" v-loading="loading" stripe>
             <el-table-column prop="id" label="ID" width="60" />
-            <el-table-column prop="name" label="姓名" width="120" />
+            <el-table-column label="姓名" width="120">
+                <template #default="{ row }">
+                    <el-link type="primary" :underline="false" @click="openDetail(row)">{{ row.name }}</el-link>
+                </template>
+            </el-table-column>
             <el-table-column prop="username" label="账号" width="120" />
             <el-table-column prop="email" label="邮箱" min-width="170">
                 <template #default="{ row }">
@@ -151,6 +155,49 @@
                 该用户所有登录已失效，需用新密码重新登录。
             </p>
         </el-dialog>
+
+        <el-drawer v-model="detailOpen" title="用户详情" size="440px">
+            <div v-if="detail" v-loading="detailLoading">
+                <el-descriptions :column="1" border size="small">
+                    <el-descriptions-item label="姓名">{{ detail.user.name }}</el-descriptions-item>
+                    <el-descriptions-item label="账号">{{ detail.user.username }}</el-descriptions-item>
+                    <el-descriptions-item label="邮箱">{{ detail.user.email || '未绑定' }}</el-descriptions-item>
+                    <el-descriptions-item label="角色">{{ detail.user.role_label || detail.user.role }}</el-descriptions-item>
+                    <el-descriptions-item label="状态">{{ detail.user.is_active ? '启用' : '停用' }}</el-descriptions-item>
+                    <el-descriptions-item label="最后登录">{{ detail.user.last_login_at || '从未登录' }}</el-descriptions-item>
+                </el-descriptions>
+
+                <el-row :gutter="8" class="detail-stats">
+                    <el-col :span="12">
+                        <div class="stat-box">
+                            <div class="stat-num">{{ detail.stats.submitted }}</div>
+                            <div class="stat-label">提交工单（进行中 {{ detail.stats.submitted_active }}）</div>
+                        </div>
+                    </el-col>
+                    <el-col :span="12">
+                        <div class="stat-box">
+                            <div class="stat-num">{{ detail.stats.assigned }}</div>
+                            <div class="stat-label">受理工单（进行中 {{ detail.stats.assigned_active }}）</div>
+                        </div>
+                    </el-col>
+                </el-row>
+
+                <h4 class="detail-title">最近提交</h4>
+                <el-empty v-if="! detail.recent_submitted.length" description="暂无工单" :image-size="56" />
+                <div v-for="t in detail.recent_submitted" :key="t.id" class="recent-item">
+                    <router-link :to="ticketLink(t)" class="recent-title">{{ t.no }} · {{ t.title }}</router-link>
+                    <el-tag size="small" :type="statusType(t.status)">{{ STATUS_MAP[t.status]?.label || t.status }}</el-tag>
+                </div>
+
+                <template v-if="detail.recent_assigned.length">
+                    <h4 class="detail-title">最近受理</h4>
+                    <div v-for="t in detail.recent_assigned" :key="`a-${t.id}`" class="recent-item">
+                        <router-link :to="ticketLink(t)" class="recent-title">{{ t.no }} · {{ t.title }}</router-link>
+                        <el-tag size="small" :type="statusType(t.status)">{{ STATUS_MAP[t.status]?.label || t.status }}</el-tag>
+                    </div>
+                </template>
+            </div>
+        </el-drawer>
     </el-card>
 </template>
 
@@ -158,6 +205,8 @@
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import http from '../api';
+import { adminPath } from '../paths';
+import { STATUS_MAP } from '../constants';
 import { useAuthStore } from '../stores/auth';
 
 const auth = useAuthStore();
@@ -180,6 +229,30 @@ const editForm = reactive({ id: null, name: '', email: '', role: 'agent', is_act
 
 const resetDialog = ref(false);
 const resetPasswordValue = ref('');
+
+const detailOpen = ref(false);
+const detailLoading = ref(false);
+const detail = ref(null);
+
+function statusType(status) {
+    return { open: 'danger', in_progress: 'warning', pending_resolved: 'info', closed: 'success' }[status] || 'info';
+}
+
+function ticketLink(t) {
+    return `${adminPath('tickets')}/${t.id}`;
+}
+
+async function openDetail(row) {
+    detail.value = null;
+    detailOpen.value = true;
+    detailLoading.value = true;
+    try {
+        const { data } = await http.get(`/users/${row.id}`);
+        detail.value = data;
+    } finally {
+        detailLoading.value = false;
+    }
+}
 
 function randomPassword() {
     const chars = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789';
@@ -320,5 +393,38 @@ onMounted(async () => {
 }
 .muted {
     color: var(--el-text-color-secondary);
+}
+.detail-stats {
+    margin: 16px 0 4px;
+}
+.stat-box {
+    border: 1px solid var(--el-border-color-lighter);
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+.stat-num {
+    font-size: 22px;
+    font-weight: 600;
+}
+.stat-label {
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
+}
+.detail-title {
+    margin: 18px 0 8px;
+}
+.recent-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 0;
+    border-bottom: 1px dashed var(--el-border-color-lighter);
+    font-size: 13px;
+}
+.recent-title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 </style>

@@ -162,6 +162,7 @@ class AuthController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:50'],
             'email' => ['nullable', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->id)],
+            'notify_email' => ['sometimes', 'boolean'],
         ]);
 
         $user->update($data);

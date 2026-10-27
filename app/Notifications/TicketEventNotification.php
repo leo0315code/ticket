@@ -29,7 +29,9 @@ class TicketEventNotification extends Notification implements ShouldQueue
         $channels = ['database'];
 
         // 邮箱是选填项：没绑邮箱就没有邮件通道，避免队列任务发往空地址失败
-        if (filled($notifiable->email ?? null) && Settings::get('notify_mail', true)) {
+        if (filled($notifiable->email ?? null)
+            && ($notifiable->notify_email ?? true)
+            && Settings::get('notify_mail', true)) {
             $channels[] = 'mail';
         }
 

@@ -77,6 +77,10 @@
                 <el-form-item label="邮箱（选填）">
                     <el-input v-model="profileForm.email" placeholder="用于接收工单邮件通知" />
                 </el-form-item>
+                <el-form-item label="邮件通知">
+                    <el-switch v-model="profileForm.notify_email" :disabled="!profileForm.email" />
+                    <span class="bind-hint">关闭后只收站内信；未绑定邮箱时不可开启</span>
+                </el-form-item>
             </el-form>
 
             <div class="dlg-label">登录与通知</div>
@@ -138,7 +142,7 @@ const router = useRouter();
 const stats = ref([{ label: '全部', value: '–' }]);
 const settingsVisible = ref(false);
 const saving = ref(false);
-const profileForm = reactive({ name: '', email: '' });
+const profileForm = reactive({ name: '', email: '', notify_email: true });
 const phoneForm = reactive({ phone: '', code: '' });
 const sendingCode = ref(false);
 const bindingPhone = ref(false);
@@ -156,6 +160,7 @@ async function load() {
 function openSettings() {
     profileForm.name = auth.user?.name || '';
     profileForm.email = auth.user?.email || '';
+    profileForm.notify_email = auth.user?.notify_email !== false;
     settingsVisible.value = true;
 }
 
@@ -221,7 +226,11 @@ async function saveSettings() {
     }
     saving.value = true;
     try {
-        await auth.updateProfile({ name: profileForm.name.trim(), email: profileForm.email.trim() || null });
+        await auth.updateProfile({
+            name: profileForm.name.trim(),
+            email: profileForm.email.trim() || null,
+            notify_email: profileForm.notify_email,
+        });
         settingsVisible.value = false;
         ElMessage.success('资料已更新');
     } catch (e) {

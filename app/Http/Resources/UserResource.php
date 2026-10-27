@@ -24,6 +24,7 @@ class UserResource extends JsonResource
             'permissions' => $this->permissions(),
             'ticket_scope' => $this->isStaff() ? $this->ticketScope() : null,
             'is_active' => $this->isActive(),
+            'notify_email' => (bool) $this->notify_email,
             'last_login_at' => $this->last_login_at?->format('Y-m-d H:i'),
             'tickets_count' => $this->whenCounted('tickets'),
             'assigned_tickets_count' => $this->whenCounted('assignedTickets'),

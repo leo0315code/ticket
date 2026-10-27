@@ -6,11 +6,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Ticket extends Model
 {
     use HasFactory;
+    use SoftDeletes;
+
     public const STATUSES = ['open', 'in_progress', 'pending_resolved', 'closed'];
     public const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
     public const STATUS_LABELS = [
@@ -39,6 +42,7 @@ class Ticket extends Model
         'user_id', 'agent_id', 'category_id',
         'resolved_at', 'closed_at', 'rating', 'rating_comment',
         'sla_due_at', 'first_response_at',
+        'closed_reason', 'reopen_count', 'last_activity_at',
     ];
 
     protected function casts(): array
@@ -50,12 +54,17 @@ class Ticket extends Model
             'closed_at' => 'datetime',
             'sla_due_at' => 'datetime',
             'first_response_at' => 'datetime',
+            'last_activity_at' => 'datetime',
+            'reopen_count' => 'integer',
+            'deleted_at' => 'datetime',
         ];
     }
 
+    /** 超时＝首次响应时限已过且尚未响应（已响应的工单不再算超时） */
     public function isOverdue(): bool
     {
-        return in_array($this->status, ['open', 'in_progress'], true)
+        return $this->first_response_at === null
+            && in_array($this->status, ['open', 'in_progress'], true)
             && $this->sla_due_at !== null
             && $this->sla_due_at->isPast();
     }
@@ -98,14 +107,16 @@ class Ticket extends Model
         $this->logs()->create(['user_id' => $userId, 'action' => $action, 'detail' => $detail]);
     }
 
-    /** 生成工单号：TK-20261024-0001 */
+    /** 生成工单号：TK-20261024-0001（序号按数值取最大，超过 9999 也不会回绕） */
     public static function nextNo(): string
     {
-        $date = now()->format('Ymd');
-        $last = static::where('no', 'like', "TK-{$date}-%")->max('no');
-        $seq = $last ? (int) substr($last, -4) : 0;
+        $prefix = 'TK-'.now()->format('Ymd').'-';
+        $max = static::withTrashed()
+            ->where('no', 'like', $prefix.'%')
+            ->selectRaw('MAX(CAST(SUBSTRING(no, ?) AS UNSIGNED)) AS seq', [strlen($prefix) + 1])
+            ->value('seq');
 
-        return sprintf('TK-%s-%04d', $date, $seq + 1);
+        return $prefix.str_pad((string) ((int) $max + 1), 4, '0', STR_PAD_LEFT);
     }
 
     /** @param Builder<static> $query */
@@ -123,6 +134,7 @@ class Ticket extends Model
             ->when($filters['mine'] ?? null, fn (Builder $q, $v) => $q->where('agent_id', $v))
             ->when($filters['overdue'] ?? null, function (Builder $q) {
                 $q->whereIn('status', ['open', 'in_progress'])
+                    ->whereNull('first_response_at')
                     ->whereNotNull('sla_due_at')
                     ->where('sla_due_at', '<', now());
             });

@@ -51,7 +51,9 @@ router.beforeEach((to) => {
     const auth = useAuthStore();
     // 未登录：后台去后台登录页，其余去客户端登录页
     if (!to.meta.guest && !auth.isLoggedIn) {
-        return isAdminRoute(to.path) ? adminPath('login') : '/login';
+        const loginPath = isAdminRoute(to.path) ? adminPath('login') : '/login';
+        // 带上原目标，登录后回跳（邮件深链、分享链接都能落到具体工单）
+        return { path: loginPath, query: to.fullPath === '/' ? {} : { redirect: to.fullPath } };
     }
     if (to.meta.staff && !auth.isStaff) return '/m/tickets';
     if (to.meta.admin && !auth.isAdmin) return '/m/tickets';
@@ -61,6 +63,7 @@ router.beforeEach((to) => {
     }
     // 已登录访问登录页：各回各家
     if (to.meta.guest && auth.isLoggedIn) {
+        if (to.query.redirect) return to.query.redirect;
         if (to.meta.adminGate) return auth.isStaff ? adminPath('tickets') : '/m/tickets';
         return auth.user?.role === 'user' ? '/m/tickets' : adminPath('tickets');
     }

@@ -12,6 +12,7 @@ class TicketReplyResource extends JsonResource
         return [
             'id' => $this->id,
             'content' => $this->content,
+            'is_internal' => (bool) $this->is_internal,
             'user' => new UserResource($this->whenLoaded('user')),
             'created_at' => $this->created_at->format('Y-m-d H:i'),
         ];

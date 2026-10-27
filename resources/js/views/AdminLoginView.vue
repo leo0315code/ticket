@@ -42,7 +42,7 @@
 
 <script setup>
 import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { User, Lock, Moon, Sunny } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
@@ -59,6 +59,8 @@ const captchaTicket = ref(null);
 const captchaRef = ref();
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
+const redirectTo = typeof route.query.redirect === 'string' ? route.query.redirect : '';
 
 async function doLogin() {
     loading.value = true;
@@ -70,7 +72,7 @@ async function doLogin() {
             captcha_ticket: captchaTicket.value,
         });
         auth.save(data.token, data.user);
-        router.push(adminPath('tickets'));
+        router.push(redirectTo || adminPath('tickets'));
     } catch (e) {
         errorType.value = 'error';
         error.value = e.response?.data?.message || '登录失败';

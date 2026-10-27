@@ -11,31 +11,50 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class FaqController extends Controller
 {
-    public function index(): AnonymousResourceCollection
+    /** 帮助中心列表：工作人员看全部，客户只看已公开的；支持关键词搜索 */
+    public function index(Request $request): AnonymousResourceCollection
     {
-        return FaqResource::collection(Faq::orderBy('sort')->orderBy('id')->get());
+        $query = Faq::query()
+            ->when(! $request->user()?->isStaff(), fn ($q) => $q->where('is_public', true))
+            ->when($request->filled('q'), function ($q) use ($request) {
+                $kw = '%'.$request->string('q').'%';
+                $q->where(fn ($q) => $q->where('question', 'like', $kw)->orWhere('answer', 'like', $kw));
+            })
+            ->orderBy('category')
+            ->orderBy('sort')
+            ->orderBy('id');
+
+        return FaqResource::collection($query->get());
+    }
+
+    /** 阅读计数（展开答案时上报，用于识别“没人看”的条目） */
+    public function view(Faq $faq): JsonResponse
+    {
+        $faq->increment('views');
+
+        return response()->json(['views' => $faq->views]);
+    }
+
+    /** “有帮助 / 没帮助”反馈 */
+    public function feedback(Request $request, Faq $faq): JsonResponse
+    {
+        $data = $request->validate(['helpful' => ['required', 'boolean']]);
+        $faq->increment($data['helpful'] ? 'helpful_yes' : 'helpful_no');
+
+        return response()->json([
+            'helpful_yes' => $faq->helpful_yes,
+            'helpful_no' => $faq->helpful_no,
+        ]);
     }
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate([
-            'question' => ['required', 'string', 'max:200'],
-            'answer' => ['required', 'string', 'max:5000'],
-            'sort' => ['nullable', 'integer', 'min:0'],
-        ]);
-
-        return response()->json(new FaqResource(Faq::create($data)), 201);
+        return response()->json(new FaqResource(Faq::create($this->validated($request))), 201);
     }
 
     public function update(Request $request, Faq $faq): JsonResponse
     {
-        $data = $request->validate([
-            'question' => ['required', 'string', 'max:200'],
-            'answer' => ['required', 'string', 'max:5000'],
-            'sort' => ['nullable', 'integer', 'min:0'],
-        ]);
-
-        $faq->update($data);
+        $faq->update($this->validated($request));
 
         return response()->json(new FaqResource($faq));
     }
@@ -45,6 +64,17 @@ class FaqController extends Controller
         $faq->delete();
 
         return response()->json(['message' => '已删除']);
+    }
+
+    private function validated(Request $request): array
+    {
+        return $request->validate([
+            'question' => ['required', 'string', 'max:200'],
+            'answer' => ['required', 'string', 'max:5000'],
+            'sort' => ['nullable', 'integer', 'min:0'],
+            'category' => ['nullable', 'string', 'max:40'],
+            'is_public' => ['sometimes', 'boolean'],
+        ]);
     }
 }
 
@@ -57,6 +87,11 @@ class FaqResource extends JsonResource
             'question' => $this->question,
             'answer' => $this->answer,
             'sort' => $this->sort,
+            'category' => $this->category,
+            'is_public' => (bool) $this->is_public,
+            'views' => (int) $this->views,
+            'helpful_yes' => (int) $this->helpful_yes,
+            'helpful_no' => (int) $this->helpful_no,
         ];
     }
 }

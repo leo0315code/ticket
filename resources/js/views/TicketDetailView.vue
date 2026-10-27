@@ -4,6 +4,11 @@
             <template #content>
                 <span style="font-weight: 600">{{ ticket.no }} · {{ ticket.title }}</span>
             </template>
+            <template #extra>
+                <el-button v-if="canReopen" type="warning" plain size="small" :loading="reopening" @click="reopen">
+                    问题未解决，重新打开
+                </el-button>
+            </template>
         </el-page-header>
 
         <el-row :gutter="16">
@@ -33,9 +38,15 @@
                     <h4>工单内容</h4>
                     <p class="content">{{ ticket.content }}</p>
 
-                    <el-divider>回复（{{ ticket.replies?.length || 0 }}）</el-divider>
+                    <el-divider>回复（{{ ticket.replies_count ?? ticket.replies?.length ?? 0 }}）</el-divider>
 
-                    <ChatArea :replies="ticket.replies || []" />
+                    <div v-if="hasEarlier" style="text-align: center; margin-bottom: 8px">
+                        <el-button text size="small" :loading="loadingEarlier" @click="loadEarlier">
+                            加载更早的回复（还有 {{ (ticket.replies_count ?? 0) - displayReplies.length }} 条）
+                        </el-button>
+                    </div>
+
+                    <ChatArea :replies="displayReplies" />
                     <ReplyBox :ticket-id="ticket.id" @sent="load" />
                 </el-card>
             </el-col>
@@ -67,7 +78,7 @@
 
                 <AttachmentPanel :ticket="ticket" @change="load" />
 
-                <el-card header="操作记录" style="margin-top: 16px">
+                <el-card v-if="auth.isStaff" header="操作记录" style="margin-top: 16px">
                     <el-timeline>
                         <el-timeline-item
                             v-for="l in ticket.logs"
@@ -116,7 +127,23 @@ const ticket = ref(null);
 const categories = ref([]);
 const agents = ref([]);
 const ratingSaving = ref(false);
+const reopening = ref(false);
+const loadingEarlier = ref(false);
+const olderReplies = ref([]);
 const ratingForm = reactive({ rating: 0, comment: '' });
+
+// 展示用回复 = 已加载的更早分页 + 最新一页
+const displayReplies = computed(() => [...olderReplies.value, ...(ticket.value?.replies || [])]);
+const hasEarlier = computed(() =>
+    ticket.value && (ticket.value.replies_count ?? 0) > displayReplies.value.length,
+);
+
+const canReopen = computed(() =>
+    auth.user && ticket.value
+    && ticket.value.user?.id === auth.user.id
+    && ticket.value.status === 'closed'
+    && (ticket.value.reopen_count || 0) < 3,
+);
 
 const canRate = computed(() =>
     auth.user && ticket.value
@@ -129,8 +156,42 @@ async function load() {
     ticket.value = data;
 }
 
+// 向前翻页：以当前已加载的最早一条为游标，避免新回复插入导致重复/遗漏
+async function loadEarlier() {
+    const first = displayReplies.value[0];
+    if (!first || loadingEarlier.value) {
+        return;
+    }
+    loadingEarlier.value = true;
+    try {
+        const { data } = await http.get(`/tickets/${route.params.id}/replies`, {
+            params: { before_id: first.id, per_page: 30 },
+        });
+        const known = new Set(displayReplies.value.map((r) => r.id));
+        const older = (data.data || []).filter((r) => !known.has(r.id));
+        olderReplies.value = [...older, ...olderReplies.value];
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '加载更早的回复失败');
+    } finally {
+        loadingEarlier.value = false;
+    }
+}
+
 function onOpsSaved(data) {
     ticket.value = { ...ticket.value, ...data };
+}
+
+async function reopen() {
+    reopening.value = true;
+    try {
+        const { data } = await http.post(`/tickets/${route.params.id}/reopen`);
+        ticket.value = { ...ticket.value, ...data };
+        ElMessage.success('工单已重新打开，客服会尽快跟进');
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '重新打开失败');
+    } finally {
+        reopening.value = false;
+    }
 }
 
 async function submitRating() {
@@ -168,13 +229,19 @@ onMounted(async () => {
             return;
         }
         list.push({ ...payload.reply });
-        if (ticket.value) ticket.value.replies_count = list.length;
+        if (ticket.value) ticket.value.replies_count = (ticket.value.replies_count || 0) + 1;
         ElMessage.info(`【${payload.reply.user.name}】有新回复`);
     });
 });
 
 // 切换工单时重新加载
-watch(() => route.params.id, (id) => { if (id) load(); });
+watch(() => route.params.id, (id) => {
+    if (!id) {
+        return;
+    }
+    olderReplies.value = [];
+    load();
+});
 </script>
 
 <style scoped>

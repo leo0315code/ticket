@@ -76,7 +76,7 @@
 
 <script setup>
 import { reactive, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User, Lock, Postcard, Message, Moon, Sunny } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
@@ -91,19 +91,22 @@ const form = reactive({ account: '', password: '' });
 const reg = reactive({ name: '', username: '', email: '', password: '' });
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
+const redirectTo = typeof route.query.redirect === 'string' ? route.query.redirect : '';
 
 async function doLogin() {
     loading.value = true;
     error.value = '';
     try {
         await auth.login(form.account, form.password);
-        if (auth.user?.role !== 'user') {
+        if (auth.user?.role !== 'user' && ! redirectTo) {
             // 移动端仅普通用户：工作人员请走后台入口
             await auth.logout();
             error.value = '该账号为客服/管理员，请从后台入口登录';
             return;
         }
-        router.push('/m/tickets');
+        // 有回跳目标（邮件/分享深链）时按目标走；客服会被路由再送到后台工单页
+        router.push(redirectTo || '/m/tickets');
     } catch (e) {
         error.value = e.response?.data?.message || '登录失败';
     } finally {

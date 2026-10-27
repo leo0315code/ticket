@@ -34,7 +34,9 @@ class TicketController extends Controller
 
         $query->filter($filters);
 
-        return TicketResource::collection($query->paginate($request->integer('per_page', 10)));
+        $perPage = min(max($request->integer('per_page', 10), 1), 100);
+
+        return TicketResource::collection($query->paginate($perPage));
     }
 
     public function store(Request $request): JsonResponse
@@ -46,12 +48,14 @@ class TicketController extends Controller
             'category_id' => ['required', Rule::exists('categories', 'id')],
         ]);
 
-        $ticket = $request->user()->tickets()->create([
+        // 工单号按“当日最大序号 +1”生成，并发下可能撞唯一索引：撞了就重算重试
+        $ticket = retry(5, fn () => $request->user()->tickets()->create([
             ...$data,
             'no' => Ticket::nextNo(),
             'status' => 'open',
             'sla_due_at' => now()->addHours(Ticket::SLA_HOURS[$data['priority']] ?? 24),
-        ]);
+            'last_activity_at' => now(),
+        ]), 30);
         $ticket->log('created', $request->user()->id, "创建工单【{$ticket->title}】");
 
         // 通知全部客服：有新工单
@@ -64,15 +68,25 @@ class TicketController extends Controller
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
         $this->authorize('view', $ticket);
+        $isStaff = $request->user()->isStaff();
 
-        return response()->json(new TicketResource(
-            $ticket->load(['user:id,name', 'agent:id,name', 'category:id,name'])
-                ->load([
-                    'replies' => fn ($q) => $q->with('user:id,name,role')->oldest(),
-                    'logs' => fn ($q) => $q->with('user:id,name')->oldest(),
-                    'attachments' => fn ($q) => $q->with('user:id,name')->oldest(),
-                ])
-        ));
+        $ticket->load(['user:id,name', 'agent:id,name', 'category:id,name']);
+        // 只返回最新一页回复（30 条），更早的通过 GET /tickets/{id}/replies?before_id= 翻页加载
+        $ticket->load([
+            'replies' => fn ($q) => $q->with('user:id,name,role')->orderByDesc('id')
+                ->when(! $isStaff, fn ($q) => $q->where('is_internal', false))
+                ->limit(30),
+            'attachments' => fn ($q) => $q->with('user:id,name')->oldest(),
+        ]);
+        $ticket->setRelation('replies', $ticket->replies->reverse()->values());
+        // replies_count 作为可加载的总条数（客户会排除内部备注）
+        $ticket->loadCount(['replies' => fn ($q) => $q->when(! $isStaff, fn ($q) => $q->where('is_internal', false))]);
+        // 操作日志含内部分配/优先级调整等，仅工作人员可见
+        if ($isStaff) {
+            $ticket->load(['logs' => fn ($q) => $q->with('user:id,name')->oldest()]);
+        }
+
+        return response()->json(new TicketResource($ticket));
     }
 
     public function update(Request $request, Ticket $ticket): JsonResponse
@@ -88,12 +102,28 @@ class TicketController extends Controller
                 'agent_id' => ['sometimes', 'nullable', Rule::exists('users', 'id')->whereIn('role', ['agent', 'admin'])],
             ]);
 
-            if (($data['status'] ?? null) === 'pending_resolved') {
+            $newStatus = $data['status'] ?? null;
+            if ($newStatus === 'pending_resolved') {
                 $data['resolved_at'] ??= now();
             }
-            if (($data['status'] ?? null) === 'closed') {
+            if ($newStatus === 'closed') {
+                $data['resolved_at'] ??= now();
                 $data['closed_at'] ??= now();
+                $data['closed_reason'] ??= 'manual';
             }
+            // 状态回退（重新打开）时清掉解决/关闭时间，避免留下脏时间戳
+            if (in_array($newStatus, ['open', 'in_progress'], true)) {
+                $data['resolved_at'] = null;
+                $data['closed_at'] = null;
+                $data['closed_reason'] = null;
+            }
+
+            // 优先级变化后按新优先级重算响应时限（以创建时间为基准，不因改优先级而白送时限）
+            if (isset($data['priority']) && $data['priority'] !== $ticket->priority) {
+                $data['sla_due_at'] = $ticket->created_at->copy()
+                    ->addHours(Ticket::SLA_HOURS[$data['priority']] ?? 24);
+            }
+            $data['last_activity_at'] = now();
         } else {
             if ($ticket->user_id !== $user->id || $ticket->status !== 'open') {
                 return response()->json(['message' => '仅待处理状态下的本人工单可编辑'], 403);
@@ -156,6 +186,7 @@ class TicketController extends Controller
         $tickets = Ticket::whereIn('id', $data['ids'])->get();
         $count = 0;
 
+        \Illuminate\Support\Facades\DB::transaction(function () use ($tickets, $data, $request, &$count) {
         foreach ($tickets as $ticket) {
             if ($data['action'] === 'close') {
                 if ($ticket->status === 'closed') {
@@ -165,6 +196,8 @@ class TicketController extends Controller
                     'status' => 'closed',
                     'resolved_at' => $ticket->resolved_at ?? now(),
                     'closed_at' => $ticket->closed_at ?? now(),
+                    'closed_reason' => 'manual',
+                    'last_activity_at' => now(),
                 ]);
                 $ticket->log('status_changed', $request->user()->id, '状态：已关闭（批量操作）');
                 $ticket->user->notify(new \App\Notifications\TicketEventNotification(
@@ -176,11 +209,15 @@ class TicketController extends Controller
                     continue;
                 }
                 $oldName = $ticket->agent?->name ?? '未指派';
-                $ticket->update(['agent_id' => $agent->id]);
+                $ticket->update(['agent_id' => $agent->id, 'last_activity_at' => now()]);
                 $ticket->log('assigned', $request->user()->id, "{$oldName} → {$agent->name}（批量指派）");
+                if ($agent->id !== $request->user()->id) {
+                    $agent->notify(new TicketEventNotification($ticket, "工单 {$ticket->no} 已指派给您", 'assigned'));
+                }
             }
             $count++;
         }
+        });
 
         return response()->json(['message' => "已处理 {$count} 张工单", 'count' => $count]);
     }
@@ -208,6 +245,47 @@ class TicketController extends Controller
         $ticket->log('rated', $request->user()->id, "{$data['rating']} 星".(isset($data['rating_comment']) && $data['rating_comment'] ? "（{$data['rating_comment']}）" : ''));
 
         return response()->json(new TicketResource($ticket->load(['user:id,name', 'agent:id,name', 'category:id,name'])));
+    }
+
+    /** 客户重新打开已关闭的工单（关闭后 14 天内、最多 3 次） */
+    public function reopen(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('view', $ticket);
+        $user = $request->user();
+
+        if ($ticket->user_id !== $user->id) {
+            return response()->json(['message' => '仅工单提交人可重新打开'], 403);
+        }
+        if ($ticket->status !== 'closed') {
+            return response()->json(['message' => '只有已关闭的工单可以重新打开'], 422);
+        }
+        if ($ticket->closed_at && $ticket->closed_at->lt(now()->subDays(14))) {
+            return response()->json(['message' => '工单关闭已超过 14 天，请新建工单'], 422);
+        }
+        if ((int) $ticket->reopen_count >= 3) {
+            return response()->json(['message' => '该工单已重开 3 次，请新建工单'], 422);
+        }
+
+        $ticket->update([
+            'status' => 'open',
+            'resolved_at' => null,
+            'closed_at' => null,
+            'closed_reason' => null,
+            'reopen_count' => (int) $ticket->reopen_count + 1,
+            'last_activity_at' => now(),
+        ]);
+        $ticket->log('reopened', $user->id, '客户重新打开工单');
+
+        $recipients = $ticket->agent_id
+            ? User::where('id', $ticket->agent_id)->get()
+            : User::whereIn('role', ['agent', 'admin'])->get();
+        Notification::send($recipients, new TicketEventNotification(
+            $ticket, "{$user->name} 重新打开了工单 {$ticket->no}", 'reopened'
+        ));
+
+        return response()->json(new TicketResource(
+            $ticket->load(['user:id,name', 'agent:id,name', 'category:id,name'])->loadCount('replies')
+        ));
     }
 
     public function destroy(Ticket $ticket): JsonResponse

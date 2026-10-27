@@ -139,7 +139,7 @@ class TicketTest extends ApiTestCase
         $this->actingAsApi($this->makeUser('admin'))
             ->deleteJson("/api/tickets/{$ticket->id}")->assertOk();
 
-        $this->assertDatabaseMissing('tickets', ['id' => $ticket->id]);
+        $this->assertSoftDeleted('tickets', ['id' => $ticket->id]);
     }
 
     public function test_mine_filter_uses_current_user_id(): void

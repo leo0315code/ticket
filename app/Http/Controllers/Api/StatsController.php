@@ -32,19 +32,26 @@ class StatsController extends Controller
         }
 
         // 客服绩效：受理数 / 已关闭数 / 平均首次响应（分钟）/ 满意度均分
+        // 聚合查询一次取全量，避免每个坐席再各查一遍（原实现 O(坐席×工单)）
+        $responseByAgent = Ticket::whereNotNull('agent_id')->whereNotNull('first_response_at')
+            ->get(['agent_id', 'created_at', 'first_response_at'])
+            ->groupBy('agent_id')
+            ->map(fn ($rows) => $rows->avg(fn ($t) => $t->created_at->diffInMinutes($t->first_response_at)));
+
+        $ratingByAgent = Ticket::whereNotNull('agent_id')->whereNotNull('rating')
+            ->groupBy('agent_id')
+            ->selectRaw('agent_id, AVG(rating) as avg_rating')
+            ->pluck('avg_rating', 'agent_id');
+
         $byAgent = User::whereIn('role', ['agent', 'admin'])
             ->withCount([
                 'assignedTickets as assigned_count',
                 'assignedTickets as closed_count' => fn ($q) => $q->where('status', 'closed'),
             ])
             ->get()
-            ->map(function ($u) {
-                // PHP 层计算平均响应（分钟），兼容 SQLite/MySQL
-                $responseTimes = Ticket::where('agent_id', $u->id)->whereNotNull('first_response_at')
-                    ->get(['created_at', 'first_response_at'])
-                    ->map(fn ($t) => $t->created_at->diffInMinutes($t->first_response_at));
-                $avgResponse = $responseTimes->count() > 0 ? $responseTimes->avg() : null;
-                $avgRating = Ticket::where('agent_id', $u->id)->whereNotNull('rating')->avg('rating');
+            ->map(function ($u) use ($responseByAgent, $ratingByAgent) {
+                $avgResponse = $responseByAgent[$u->id] ?? null;
+                $avgRating = $ratingByAgent[$u->id] ?? null;
 
                 return [
                     'id' => $u->id,
@@ -52,12 +59,29 @@ class StatsController extends Controller
                     'assigned' => (int) $u->assigned_count,
                     'closed' => (int) $u->closed_count,
                     'avg_response_min' => $avgResponse !== null ? round($avgResponse, 1) : null,
-                    'avg_rating' => $avgRating !== null ? round($avgRating, 1) : null,
+                    'avg_rating' => $avgRating !== null ? round((float) $avgRating, 1) : null,
                 ];
             })->values();
 
+        // 时间区间：新增 / 关闭 / 首次响应合规率（SLA 只看首次响应）
+        $days = in_array($request->integer('days'), [7, 30, 90], true) ? $request->integer('days') : 30;
+        $from = now()->subDays($days)->startOfDay();
+
+        $responded = Ticket::where('created_at', '>=', $from)
+            ->whereNotNull('first_response_at')->whereNotNull('sla_due_at');
+        $respondedCount = (clone $responded)->count();
+        $onTimeCount = (clone $responded)->whereColumn('first_response_at', '<=', 'sla_due_at')->count();
+
         return response()->json([
             'by_agent' => $byAgent,
+            'range' => [
+                'days' => $days,
+                'new' => Ticket::where('created_at', '>=', $from)->count(),
+                'closed' => Ticket::where('created_at', '>=', $from)->where('status', 'closed')->count(),
+                'responded' => $respondedCount,
+                'on_time' => $onTimeCount,
+                'sla_rate' => $respondedCount > 0 ? round($onTimeCount / $respondedCount * 100, 1) : null,
+            ],
             'total' => Ticket::count(),
             'unhandled' => $byStatus['open'] + $byStatus['in_progress'],
             'overdue' => Ticket::whereIn('status', ['open', 'in_progress'])

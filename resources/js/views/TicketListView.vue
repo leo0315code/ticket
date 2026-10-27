@@ -181,6 +181,22 @@ window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMo
 const hasActiveFilters = computed(() => !!(filters.keyword || filters.status || filters.priority || filters.category_id || filters.mine || filters.overdue));
 const filters = reactive({ keyword: '', status: '', priority: '', category_id: '', mine: false, overdue: false });
 
+// 记住上次的筛选条件：客服经常盯同一个队列，刷新/离开再回来不必重选
+const FILTER_KEY = 'ticket-list-filters';
+
+function restoreFilters() {
+    try {
+        const saved = JSON.parse(localStorage.getItem(FILTER_KEY) || '{}');
+        for (const key of Object.keys(filters)) {
+            if (key in saved && typeof saved[key] === typeof filters[key]) filters[key] = saved[key];
+        }
+    } catch { /* 忽略损坏的本地数据 */ }
+}
+
+function saveFilters() {
+    localStorage.setItem(FILTER_KEY, JSON.stringify(filters));
+}
+
 const overviewCards = computed(() => {
     const s = mine.value?.by_status || {};
     return [
@@ -243,6 +259,7 @@ async function load(p = page.value) {
             mine: filters.mine ? 1 : undefined,
             overdue: filters.overdue ? 1 : undefined,
         };
+        saveFilters();
         const { data } = await http.get('/tickets', { params });
         tickets.value = data.data;
         total.value = data.meta.total;
@@ -258,6 +275,7 @@ function reset() {
 }
 
 onMounted(async () => {
+    restoreFilters();
     load(1);
     loadMine();
     loadAgents();

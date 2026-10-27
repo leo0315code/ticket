@@ -12,7 +12,7 @@
                 v-model="reply"
                 type="textarea"
                 :rows="3"
-                :placeholder="auth.isStaff ? '输入回复内容…（@账号 可提醒同事）' : '输入回复内容…'"
+                :placeholder="placeholder"
                 @input="onInput"
             />
             <div v-if="mentionVisible" class="mention-panel">
@@ -37,6 +37,25 @@
         </div>
 
         <div class="reply-actions">
+            <template v-if="auth.isStaff">
+                <el-tooltip :content="isInternal ? '当前为内部备注，客户看不到' : '点击切换为内部备注'" placement="top">
+                    <el-button :type="isInternal ? 'warning' : 'default'" :plain="isInternal" size="default" @click="isInternal = !isInternal">
+                        {{ isInternal ? '🔒 内部备注' : '内部备注' }}
+                    </el-button>
+                </el-tooltip>
+                <el-select
+                    v-model="cannedId"
+                    class="canned-select"
+                    filterable
+                    clearable
+                    placeholder="快捷回复"
+                    size="default"
+                    @change="insertCanned"
+                >
+                    <el-option v-for="c in cannedList" :key="c.id" :label="c.title" :value="c.id" />
+                </el-select>
+                <el-button size="default" @click="manageVisible = true">管理</el-button>
+            </template>
             <el-upload
                 :show-file-list="false"
                 :auto-upload="false"
@@ -46,13 +65,37 @@
             >
                 <el-button :loading="uploading" title="添加图片/附件">📎 附件</el-button>
             </el-upload>
-            <el-button type="primary" :loading="sending" :disabled="!reply.trim() && files.length === 0" @click="send">回复</el-button>
+            <el-button type="primary" :loading="sending" :disabled="!reply.trim() && files.length === 0" @click="send">
+                {{ isInternal ? '添加备注' : '回复' }}
+            </el-button>
         </div>
+
+        <el-dialog v-model="manageVisible" title="快捷回复模板" width="560px">
+            <div class="canned-form">
+                <el-input v-model="cannedForm.title" placeholder="标题，如：已收到，正在处理" maxlength="60" />
+                <el-input v-model="cannedForm.body" type="textarea" :rows="3" placeholder="回复正文" maxlength="2000" />
+                <el-button type="primary" :loading="cannedSaving" :disabled="!cannedForm.title.trim() || !cannedForm.body.trim()" @click="saveCanned">
+                    新增模板
+                </el-button>
+            </div>
+            <el-table :data="cannedList" size="small" max-height="320">
+                <el-table-column prop="title" label="标题" />
+                <el-table-column prop="uses" label="使用" width="70" />
+                <el-table-column label="操作" width="70">
+                    <template #default="{ row }">
+                        <el-button link type="danger" @click="removeCanned(row)">删除</el-button>
+                    </template>
+                </el-table-column>
+            </el-table>
+            <template #footer>
+                <el-button @click="manageVisible = false">关闭</el-button>
+            </template>
+        </el-dialog>
     </div>
 </template>
 
 <script setup>
-import { nextTick, onMounted, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
 import { CircleCloseFilled } from '@element-plus/icons-vue';
 import http from '../../api';
@@ -67,6 +110,54 @@ const reply = ref('');
 const files = ref([]);
 const sending = ref(false);
 const uploading = ref(false);
+const isInternal = ref(false);
+
+const placeholder = computed(() => {
+    if (isInternal.value) return '内部备注：只给同事看，客户永远看不到…';
+    return auth.isStaff ? '输入回复内容…（@账号 可提醒同事）' : '输入回复内容…';
+});
+
+// 快捷回复
+const cannedList = ref([]);
+const cannedId = ref(null);
+const manageVisible = ref(false);
+const cannedSaving = ref(false);
+const cannedForm = reactive({ title: '', body: '' });
+
+async function loadCanned() {
+    if (! auth.isStaff) return;
+    const { data } = await http.get('/canned-responses');
+    cannedList.value = data.data;
+}
+
+function insertCanned(id) {
+    const item = cannedList.value.find((c) => c.id === id);
+    if (! item) return;
+    reply.value = reply.value ? `${reply.value}\n${item.body}` : item.body;
+    cannedId.value = null;
+    http.post(`/canned-responses/${item.id}/touch`).then(() => { item.uses += 1; }).catch(() => {});
+    nextTick(() => textarea()?.focus());
+}
+
+async function saveCanned() {
+    cannedSaving.value = true;
+    try {
+        await http.post('/canned-responses', { title: cannedForm.title, body: cannedForm.body });
+        cannedForm.title = '';
+        cannedForm.body = '';
+        await loadCanned();
+        ElMessage.success('模板已保存');
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '保存失败');
+    } finally {
+        cannedSaving.value = false;
+    }
+}
+
+async function removeCanned(row) {
+    await http.delete(`/canned-responses/${row.id}`);
+    cannedList.value = cannedList.value.filter((c) => c.id !== row.id);
+}
 
 const inputRef = ref();
 const mentionVisible = ref(false);
@@ -155,12 +246,15 @@ function formatSize(bytes) {
 
 async function send() {
     if (! reply.value.trim() && files.value.length === 0) {
-        ElMessage.warning('请输入回复内容或添加附件');
+        ElMessage.warning(isInternal.value ? '请输入备注内容' : '请输入回复内容或添加附件');
         return;
     }
     sending.value = true;
     try {
-        await http.post(`/tickets/${props.ticketId}/replies`, { content: reply.value || '（附件）' });
+        await http.post(`/tickets/${props.ticketId}/replies`, {
+            content: reply.value || '（附件）',
+            is_internal: auth.isStaff ? isInternal.value : false,
+        });
         reply.value = '';
 
         if (files.value.length > 0) {
@@ -181,7 +275,8 @@ async function send() {
             uploading.value = false;
         }
         emit('sent');
-        ElMessage.success('回复成功');
+        ElMessage.success(isInternal.value ? '备注已添加' : '回复成功');
+        isInternal.value = false;
     } finally {
         sending.value = false;
     }
@@ -189,6 +284,7 @@ async function send() {
 
 onMounted(() => {
     nextTick(() => textarea()?.addEventListener('keydown', onKeydown));
+    loadCanned();
 });
 </script>
 
@@ -274,6 +370,16 @@ onMounted(() => {
     margin-top: 8px;
     display: flex;
     justify-content: flex-end;
+    align-items: center;
     gap: 8px;
+}
+.canned-select {
+    width: 180px;
+}
+.canned-form {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 12px;
 }
 </style>

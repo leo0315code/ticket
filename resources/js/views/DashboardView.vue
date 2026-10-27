@@ -1,5 +1,19 @@
 <template>
     <div v-loading="loading">
+        <div class="toolbar">
+            <span class="toolbar-label">统计区间</span>
+            <el-radio-group v-model="days" size="small" @change="load">
+                <el-radio-button :value="7">近 7 天</el-radio-button>
+                <el-radio-button :value="30">近 30 天</el-radio-button>
+                <el-radio-button :value="90">近 90 天</el-radio-button>
+            </el-radio-group>
+            <span v-if="stats?.range" class="toolbar-tip">
+                新增 {{ stats.range.new }} · 关闭 {{ stats.range.closed }} · 首次响应合规
+                <b>{{ stats.range.sla_rate !== null ? stats.range.sla_rate + '%' : '—' }}</b>
+                <template v-if="stats.range.responded">（{{ stats.range.on_time }}/{{ stats.range.responded }}）</template>
+            </span>
+        </div>
+
         <el-row :gutter="16">
             <el-col :xs="12" :sm="6" v-for="c in cards" :key="c.label">
                 <el-card>
@@ -94,6 +108,7 @@ async function showRatings(row) {
     }
 }
 const loading = ref(true);
+const days = ref(30);
 const trendRef = ref();
 const statusRef = ref();
 const priorityRef = ref();
@@ -166,12 +181,19 @@ function onResize() {
     charts.forEach((c) => c.resize());
 }
 
-onMounted(async () => {
-    const { data } = await http.get('/stats');
+async function load() {
+    loading.value = true;
+    const { data } = await http.get('/stats', { params: { days: days.value } });
     stats.value = data;
     loading.value = false;
+    charts.forEach((c) => c.dispose());
+    charts = [];
     await nextTick();
     renderCharts();
+}
+
+onMounted(async () => {
+    await load();
     window.addEventListener('resize', onResize);
 });
 onBeforeUnmount(() => {
@@ -181,6 +203,24 @@ onBeforeUnmount(() => {
 </script>
 
 <style scoped>
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+.toolbar-label {
+    color: var(--el-text-color-secondary);
+    font-size: 13px;
+}
+.toolbar-tip {
+    color: var(--el-text-color-secondary);
+    font-size: 13px;
+}
+.toolbar-tip b {
+    color: var(--el-color-success);
+}
 .stat-num {
     font-size: 32px;
     font-weight: 700;

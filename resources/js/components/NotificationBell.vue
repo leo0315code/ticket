@@ -2,15 +2,26 @@
     <el-badge :value="unread" :hidden="unread === 0" :max="99" class="bell">
         <el-icon :size="20" @click="open = !open"><Bell /></el-icon>
     </el-badge>
-    <el-popover v-model:visible="open" width="360" trigger="click" @show="load">
+    <el-popover
+        v-model:visible="open"
+        :width="width"
+        trigger="click"
+        placement="bottom-end"
+        :popper-style="{ padding: '10px 12px' }"
+        @show="load"
+    >
         <template #reference><span /></template>
-        <div v-if="items.length === 0" style="text-align: center; color: #909399; padding: 16px 0">暂无通知</div>
+        <div v-if="items.length === 0" class="nf-empty">
+            <el-icon :size="26"><Bell /></el-icon>
+            <p>暂无通知</p>
+            <span>有新的回复或状态变化会在这里提醒你</span>
+        </div>
         <div v-else>
             <div class="nf-head">
                 <span>通知</span>
                 <el-button v-if="unread > 0" link type="primary" @click="markAll">全部已读</el-button>
             </div>
-            <el-scrollbar max-height="320px">
+            <el-scrollbar :max-height="scrollHeight">
                 <div
                     v-for="n in items"
                     :key="n.id"
@@ -30,7 +41,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { Bell } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
@@ -38,6 +49,12 @@ import http from '../api';
 import { connectRealtime, fetchNotifications } from '../realtime';
 import { ticketPath } from '../paths';
 import { playNotifySound } from '../utils/sound';
+
+// 手机上弹层要跟着视口收窄，否则 360px 固定宽会超出屏幕
+const viewport = ref(window.innerWidth);
+const width = computed(() => Math.min(360, viewport.value - 32));
+const scrollHeight = computed(() => (viewport.value < 768 ? '50vh' : '320px'));
+const onResize = () => { viewport.value = window.innerWidth; };
 
 const unread = ref(0);
 const items = ref([]);
@@ -72,7 +89,7 @@ connectRealtime((payload) => {
     if (payload.type === 'notification') {
         unread.value += 1;
         items.value.unshift({ ...payload, read: false, created_at: '刚刚' });
-        const viewing = route.path === `/tickets/${payload.ticket_id}`;
+        const viewing = String(route.params.id || '') === String(payload.ticket_id);
         playNotifySound();
         if (! viewing) {
             ElNotification({
@@ -103,8 +120,12 @@ async function markAll() {
 onMounted(() => {
     load();
     timer = setInterval(load, 30000);
+    window.addEventListener('resize', onResize);
 });
-onBeforeUnmount(() => clearInterval(timer));
+onBeforeUnmount(() => {
+    clearInterval(timer);
+    window.removeEventListener('resize', onResize);
+});
 
 defineExpose({ load });
 </script>
@@ -112,25 +133,44 @@ defineExpose({ load });
 <style scoped>
 .bell {
     cursor: pointer;
-    margin-right: 24px;
     display: flex;
     align-items: center;
+    color: var(--el-text-color-regular);
+}
+.bell :deep(.el-badge__content) {
+    top: 6px;
+    right: 10px;
 }
 .nf-head {
     display: flex;
     justify-content: space-between;
     align-items: center;
     font-weight: 600;
-    padding-bottom: 6px;
-    border-bottom: 1px solid #ebeef5;
+    font-size: 13px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--el-border-color-lighter);
+}
+.nf-empty {
+    text-align: center;
+    padding: 22px 8px;
+    color: var(--el-text-color-secondary);
+}
+.nf-empty p {
+    margin: 8px 0 2px;
+    font-size: 14px;
+    color: var(--el-text-color-regular);
+}
+.nf-empty span {
+    font-size: 12px;
 }
 .nf-item {
     padding: 10px 4px;
-    border-bottom: 1px dashed #ebeef5;
+    border-bottom: 1px dashed var(--el-border-color-lighter);
     cursor: pointer;
+    border-radius: 8px;
 }
 .nf-item:hover {
-    background: #f5f7fa;
+    background: var(--el-fill-color-light);
 }
 .nf-item.unread .nf-msg {
     font-weight: 600;
@@ -138,12 +178,17 @@ defineExpose({ load });
 .nf-msg {
     font-size: 13px;
     line-height: 1.5;
-    color: #303133;
+    color: var(--el-text-color-primary);
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+    word-break: break-word;
 }
 .nf-time {
     font-size: 12px;
-    color: #909399;
-    margin-top: 2px;
+    color: var(--el-text-color-placeholder);
+    margin-top: 3px;
 }
 .nf-more {
     text-align: center;

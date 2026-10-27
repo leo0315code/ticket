@@ -26,6 +26,7 @@ Route::post('/captcha/verify', [CaptchaController::class, 'verify'])->middleware
 
 Route::middleware(['auth:sanctum', 'throttle:240,1'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
+    Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::get('tickets/export', [TicketExportController::class, 'index'])->middleware('staff');

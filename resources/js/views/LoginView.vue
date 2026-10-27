@@ -55,16 +55,12 @@
                                 </el-input>
                             </el-form-item>
                             <el-form-item>
-                                <el-input v-model="reg.email" placeholder="邮箱（选填，用于接收邮件通知）" size="large">
-                                    <template #prefix><el-icon><Message /></el-icon></template>
-                                </el-input>
-                            </el-form-item>
-                            <el-form-item>
                                 <el-input v-model="reg.password" type="password" placeholder="密码（至少 8 位）" show-password size="large" @keyup.enter="doRegister">
                                     <template #prefix><el-icon><Lock /></el-icon></template>
                                 </el-input>
                             </el-form-item>
                             <el-button type="primary" size="large" class="submit" :loading="loading" @click="doRegister">注 册</el-button>
+                            <div class="tips">邮箱选填：注册后可在「我的 → 账号设置」绑定，用于接收邮件通知</div>
                         </el-form>
                     </el-tab-pane>
                 </el-tabs>
@@ -78,7 +74,7 @@
 import { reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { User, Lock, Postcard, Message, Moon, Sunny } from '@element-plus/icons-vue';
+import { User, Lock, Postcard, Moon, Sunny } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
 import { homePath } from '../paths';
@@ -88,7 +84,7 @@ const tab = ref('login');
 const loading = ref(false);
 const error = ref('');
 const form = reactive({ account: '', password: '' });
-const reg = reactive({ name: '', username: '', email: '', password: '' });
+const reg = reactive({ name: '', username: '', password: '' });
 const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
@@ -118,7 +114,7 @@ async function doRegister() {
     loading.value = true;
     error.value = '';
     try {
-        await auth.register(reg.name, reg.username, reg.password, reg.email);
+        await auth.register(reg.name, reg.username, reg.password);
         ElMessage.success('注册成功，欢迎！');
         router.push('/m/tickets');
     } catch (e) {

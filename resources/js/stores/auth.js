@@ -22,9 +22,15 @@ export const useAuthStore = defineStore('auth', {
             const { data } = await http.post('/login', { account, password });
             this.save(data.token, data.user);
         },
-        async register(name, username, password, email = null) {
-            const { data } = await http.post('/register', { name, username, password, email: email || null });
+        async register(name, username, password) {
+            const { data } = await http.post('/register', { name, username, password });
             this.save(data.token, data.user);
+        },
+        async updateProfile(payload) {
+            const { data } = await http.put('/profile', payload);
+            this.user = data.user;
+            localStorage.setItem('ticket_user', JSON.stringify(data.user));
+            return data.user;
         },
         async logout() {
             try {

@@ -68,4 +68,42 @@ class AuthTest extends ApiTestCase
         // 注销后旧 token 失效
         $this->refreshAuth()->getJson('/api/tickets')->assertStatus(401);
     }
+
+    public function test_profile_allows_binding_and_clearing_optional_email(): void
+    {
+        \App\Models\User::factory()->create(['username' => 'taken_mail', 'email' => 'me@example.com']);
+        $user = \App\Models\User::factory()->create(['username' => 'profile_u', 'email' => null]);
+
+        // 未填邮箱也能注册/使用，之后可随时补绑
+        $this->actingAsApi($user)
+            ->putJson('/api/profile', ['name' => '新昵称', 'email' => 'profile_u@example.com'])
+            ->assertOk()
+            ->assertJsonPath('user.name', '新昵称')
+            ->assertJsonPath('user.email', 'profile_u@example.com');
+
+        // 邮箱重复
+        $this->actingAsApi($user)
+            ->putJson('/api/profile', ['name' => '新昵称', 'email' => 'me@example.com'])
+            ->assertStatus(422)->assertJsonValidationErrors('email');
+
+        // 也可以解绑（留空）
+        $this->actingAsApi($user)
+            ->putJson('/api/profile', ['name' => '新昵称', 'email' => null])
+            ->assertOk()->assertJsonPath('user.email', null);
+    }
+
+    public function test_mail_channel_is_skipped_when_email_missing(): void
+    {
+        $ticket = \App\Models\Ticket::factory()->create();
+        $notification = new \App\Notifications\TicketEventNotification($ticket, '有新回复', 'replied');
+
+        $noEmail = \App\Models\User::factory()->create(['email' => null]);
+        $withEmail = \App\Models\User::factory()->create(['email' => 'staff@example.com']);
+
+        $channels = $notification->via($noEmail);
+        $this->assertContains('database', $channels);
+        $this->assertNotContains('mail', $channels, '没绑邮箱不应尝试发邮件');
+
+        $this->assertContains('mail', $notification->via($withEmail));
+    }
 }

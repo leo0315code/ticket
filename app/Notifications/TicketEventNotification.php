@@ -25,7 +25,16 @@ class TicketEventNotification extends Notification implements ShouldQueue
      */
     public function via(object $notifiable): array
     {
-        return ['database', 'mail', GatewayChannel::class];
+        $channels = ['database'];
+
+        // 邮箱是选填项：没绑邮箱就没有邮件通道，避免队列任务发往空地址失败
+        if (filled($notifiable->email ?? null)) {
+            $channels[] = 'mail';
+        }
+
+        $channels[] = GatewayChannel::class;
+
+        return $channels;
     }
 
     /** Gateway 通道用 sync 连接（当前请求内直接发送）；database/mail 走默认 database 队列 */

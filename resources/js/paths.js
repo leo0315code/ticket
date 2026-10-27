@@ -21,5 +21,7 @@ export function ticketPath(id) {
 /** 登录后的首页 */
 export function homePath() {
     const auth = useAuthStore();
+    // 未登录一律去客户端登录页：游客访问 / 不应被带进后台登录入口
+    if (! auth.isLoggedIn) return '/login';
     return auth.user?.role === 'user' ? '/m/tickets' : `${ADMIN_BASE}/tickets`;
 }

@@ -213,7 +213,19 @@ class Ticket extends Model
             ->when($filters['category_id'] ?? null, fn (Builder $q, $v) => $q->where('category_id', $v))
             ->when($filters['keyword'] ?? null, function (Builder $q, $v) {
                 $q->where(function (Builder $q) use ($v) {
-                    $q->where('title', 'like', "%{$v}%")->orWhere('no', 'like', "%{$v}%");
+                    $q->where('title', 'like', "%{$v}%")
+                        ->orWhere('no', 'like', "%{$v}%");
+
+                    // MySQL：正文与回复正文走全文索引；短词/非 MySQL 继续用 LIKE
+                    if (\App\Support\Search::fulltextAvailable() && mb_strlen($v) >= 2) {
+                        $q->orWhereRaw('MATCH(tickets.title, tickets.content) AGAINST (? IN BOOLEAN MODE)', [$v])
+                            ->orWhereHas('replies', fn (Builder $r) => $r->whereRaw(
+                                'MATCH(ticket_replies.content) AGAINST (? IN BOOLEAN MODE)', [$v]
+                            ));
+                    } else {
+                        $q->orWhere('content', 'like', "%{$v}%")
+                            ->orWhereHas('replies', fn (Builder $r) => $r->where('content', 'like', "%{$v}%"));
+                    }
                 });
             })
             ->when($filters['mine'] ?? null, fn (Builder $q, $v) => $q->where('agent_id', $v))

@@ -17,8 +17,14 @@ class FaqController extends Controller
         $query = Faq::query()
             ->when(! $request->user()?->isStaff(), fn ($q) => $q->where('is_public', true))
             ->when($request->filled('q'), function ($q) use ($request) {
-                $kw = '%'.$request->string('q').'%';
-                $q->where(fn ($q) => $q->where('question', 'like', $kw)->orWhere('answer', 'like', $kw));
+                $term = trim((string) $request->string('q'));
+
+                if (\App\Support\Search::fulltextAvailable() && mb_strlen($term) >= 2) {
+                    $q->whereRaw('MATCH(question, answer) AGAINST (? IN BOOLEAN MODE)', [$term]);
+                } else {
+                    $kw = '%'.$term.'%';
+                    $q->where(fn ($q) => $q->where('question', 'like', $kw)->orWhere('answer', 'like', $kw));
+                }
             })
             ->orderBy('category')
             ->orderBy('sort')

@@ -95,6 +95,12 @@ export async function connectRealtime(onMessage) {
             reconnectDelay = 1000;
             return;
         }
+        // 网关每 15s 发一次应用层心跳，浏览器不会自动回，必须自己回 pong，
+        // 否则 3 次不应答（约 45s）就被网关断开，表现就是「每分钟掉线重连一次」
+        if (payload.type === 'ping') {
+            if (ws && ws.readyState === WebSocket.OPEN) ws.send('pong');
+            return;
+        }
         if (payload.type === 'auth_failed') {
             console.warn('[realtime] 网关鉴权失败：票据无效/过期，或网关未重启仍不认 ticket');
             return;

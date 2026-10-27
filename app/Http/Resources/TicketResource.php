@@ -37,6 +37,10 @@ class TicketResource extends JsonResource
             'last_activity_at' => $this->last_activity_at?->format('Y-m-d H:i'),
             'deleted_at' => $this->deleted_at?->format('Y-m-d H:i'),
             'overdue' => $this->isOverdue(),
+            'is_watching' => $this->isWatchedBy($request->user()),
+            'watchers' => $this->when($request->user()?->isStaff() && $this->relationLoaded('watchers'),
+                fn () => $this->watchers->map(fn ($u) => ['id' => $u->id, 'name' => $u->name])->values()),
+            'watchers_count' => $this->when($this->relationLoaded('watchers'), fn () => $this->watchers->count()),
             'created_at' => $this->created_at->format('Y-m-d H:i'),
             'updated_at' => $this->updated_at->format('Y-m-d H:i'),
         ];

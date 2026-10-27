@@ -139,6 +139,23 @@ class Ticket extends Model
         return $this->hasMany(TicketReply::class);
     }
 
+    /** 关注者（收到公开回复与状态变更通知，但不改变可见性） */
+    public function watchers(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'ticket_watchers')->withTimestamps();
+    }
+
+    public function isWatchedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        return $this->relationLoaded('watchers')
+            ? $this->watchers->contains('id', $user->id)
+            : $this->watchers()->where('users.id', $user->id)->exists();
+    }
+
     /** @return HasMany<TicketLog, $this> */
     public function logs(): HasMany
     {

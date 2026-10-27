@@ -102,6 +102,22 @@ class ReplyController extends Controller
             Notification::send($recipients, new TicketEventNotification($ticket, "{$actor->name} 回复了工单 {$ticket->no}：{$preview}", 'replied'));
         }
 
+        // 关注者：收到公开回复通知（内部备注只通知 staff 关注者），已通知过的人不重复发
+        $handled = collect([$actor->id, $ticket->user_id, $ticket->agent_id])->filter();
+        $watchers = $ticket->watchers()
+            ->whereNotIn('users.id', $handled->all())
+            ->when($isInternal, fn ($q) => $q->whereIn('users.role', \App\Models\Role::staffNames()))
+            ->get();
+        if ($watchers->isNotEmpty()) {
+            Notification::send($watchers, new TicketEventNotification(
+                $ticket,
+                $isInternal
+                    ? "{$actor->name} 在工单 {$ticket->no} 添加了内部备注：{$preview}"
+                    : "{$actor->name} 回复了工单 {$ticket->no}：{$preview}",
+                $isInternal ? 'internal_note' : 'watched',
+            ));
+        }
+
         // @提及：仅客服/管理员可用；普通用户输入的 @ 不解析
         $mentioned = $actor->isStaff()
             ? $this->extractMentions($data['content'])->reject(fn ($u) => $u->id === $actor->id)

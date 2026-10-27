@@ -64,12 +64,33 @@ class TicketController extends Controller
         return response()->json(new TicketResource($ticket->load('category')), 201);
     }
 
+    /** 关注/取消关注工单（参与者均可） */
+    public function watch(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('view', $ticket);
+        $ticket->watchers()->syncWithoutDetaching([$request->user()->id]);
+
+        return response()->json(['watching' => true, 'count' => $ticket->watchers()->count()]);
+    }
+
+    public function unwatch(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('view', $ticket);
+        $ticket->watchers()->detach($request->user()->id);
+
+        return response()->json(['watching' => false, 'count' => $ticket->watchers()->count()]);
+    }
+
     public function show(Request $request, Ticket $ticket): JsonResponse
     {
         $this->authorize('view', $ticket);
         $isStaff = $request->user()->isStaff();
 
         $ticket->load(['user:id,name', 'agent:id,name', 'category:id,name']);
+        // 关注者名单只给 staff；客户只看自己是否关注 + 人数
+        $ticket->load($isStaff
+            ? ['watchers:id,name,role']
+            : ['watchers:id']);
         // 只返回最新一页回复（30 条），更早的通过 GET /tickets/{id}/replies?before_id= 翻页加载
         $ticket->load([
             'replies' => fn ($q) => $q->with('user:id,name,role')->orderByDesc('id')
@@ -166,6 +187,18 @@ class TicketController extends Controller
             };
             $ticket->user->notify(new TicketEventNotification($ticket, $msg, 'updated'));
         }
+        // 关注者：状态变化时通知（提交人/受理人已单独通知，不重复）
+        if (isset($data['status'])) {
+            $watchers = $ticket->watchers()
+                ->whereNotIn('users.id', array_filter([$ticket->user_id, $ticket->agent_id, $user->id]))
+                ->get();
+            $watchers->each(fn ($w) => $w->notify(new TicketEventNotification(
+                $ticket,
+                "您关注的工单 {$ticket->no} 状态更新为「".(Ticket::STATUS_LABELS[$data['status']] ?? $data['status']).'」',
+                'watched',
+            )));
+        }
+
         // 指派时通知新客服
         if (isset($data['agent_id']) && $data['agent_id'] && $data['agent_id'] !== $user->id) {
             $assignee = User::find($data['agent_id']);

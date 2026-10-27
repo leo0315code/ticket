@@ -5,6 +5,10 @@
                 <span class="head-title">{{ ticket.no }} · {{ ticket.title }}</span>
             </template>
             <template #extra>
+                <el-button size="small" :type="ticket.is_watching ? 'primary' : 'default'" plain :loading="watching" @click="toggleWatch">
+                    {{ ticket.is_watching ? '已关注' : '关注' }}
+                    <template v-if="ticket.watchers_count">（{{ ticket.watchers_count }}）</template>
+                </el-button>
                 <el-button v-if="canReopen" type="warning" plain size="small" :loading="reopening" @click="reopen">
                     问题未解决，重新打开
                 </el-button>
@@ -137,6 +141,7 @@ const categories = ref([]);
 const agents = ref([]);
 const ratingSaving = ref(false);
 const reopening = ref(false);
+const watching = ref(false);
 const loadingEarlier = ref(false);
 const olderReplies = ref([]);
 const ratingForm = reactive({ rating: 0, comment: '' });
@@ -184,6 +189,19 @@ async function loadEarlier() {
 
 function onOpsSaved(data) {
     ticket.value = { ...ticket.value, ...data };
+}
+
+async function toggleWatch() {
+    watching.value = true;
+    try {
+        const method = ticket.value.is_watching ? 'delete' : 'post';
+        const { data } = await http[method](`/tickets/${route.params.id}/watch`);
+        ticket.value = { ...ticket.value, is_watching: data.watching, watchers_count: data.count };
+    } catch (e) {
+        notifyError(e.response?.data?.message || '操作失败');
+    } finally {
+        watching.value = false;
+    }
 }
 
 async function reopen() {

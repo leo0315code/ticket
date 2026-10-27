@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Resources\UserResource;
 use App\Models\User;
 use App\Support\Settings;
 use Illuminate\Http\JsonResponse;
@@ -54,7 +55,13 @@ class AuthController extends Controller
             return response()->json(['message' => '账号或密码不正确'], 401);
         }
 
-        return response()->json(['token' => $user->createToken('spa')->plainTextToken, 'user' => $user]);
+        if (! $user->isActive()) {
+            return response()->json(['message' => '账号已停用，请联系管理员'], 403);
+        }
+
+        $user->forceFill(['last_login_at' => now()])->save();
+
+        return response()->json(['token' => $user->createToken('spa')->plainTextToken, 'user' => new UserResource($user)]);
     }
 
     /** 后台登录：仅 staff，且必须通过滑块验证（一次性票据） */
@@ -81,11 +88,17 @@ class AuthController extends Controller
             return response()->json(['message' => '账号或密码不正确'], 401);
         }
 
+        if (! $user->isActive()) {
+            return response()->json(['message' => '账号已停用，请联系管理员'], 403);
+        }
+
         if (! $user->isStaff()) {
             return response()->json(['message' => '该账号是普通用户，请使用用户端登录'], 403);
         }
 
-        return response()->json(['token' => $user->createToken('spa')->plainTextToken, 'user' => $user]);
+        $user->forceFill(['last_login_at' => now()])->save();
+
+        return response()->json(['token' => $user->createToken('spa')->plainTextToken, 'user' => new UserResource($user)]);
     }
 
     private function ensureIsNotRateLimited(Request $request): void
@@ -114,7 +127,7 @@ class AuthController extends Controller
 
     public function me(Request $request): JsonResponse
     {
-        return response()->json(['user' => $request->user()]);
+        return response()->json(['user' => new UserResource($request->user())]);
     }
 
     /** 修改个人资料：昵称、邮箱（选填，仅用于邮件通知） */
@@ -129,6 +142,6 @@ class AuthController extends Controller
 
         $user->update($data);
 
-        return response()->json(['user' => $user->fresh()]);
+        return response()->json(['user' => new UserResource($user->fresh())]);
     }
 }

@@ -16,12 +16,13 @@ const routes = [
             { path: 'tickets', component: () => import('./views/TicketListView.vue') },
             { path: 'tickets/new', component: () => import('./views/TicketCreateView.vue') },
             { path: 'tickets/:id', component: () => import('./views/TicketDetailView.vue') },
-            { path: 'dashboard', component: () => import('./views/DashboardView.vue'), meta: { staff: true } },
-            { path: 'categories', component: () => import('./views/CategoriesView.vue'), meta: { admin: true } },
-            { path: 'users', component: () => import('./views/UsersView.vue'), meta: { admin: true } },
+            { path: 'dashboard', component: () => import('./views/DashboardView.vue'), meta: { permission: 'stats.view' } },
+            { path: 'categories', component: () => import('./views/CategoriesView.vue'), meta: { permission: 'category.manage' } },
+            { path: 'users', component: () => import('./views/UsersView.vue'), meta: { permission: 'user.manage' } },
+            { path: 'roles', component: () => import('./views/RolesView.vue'), meta: { permission: 'role.manage' } },
             { path: 'faqs', component: () => import('./views/FaqView.vue') },
-            { path: 'logs', component: () => import('./views/LogsView.vue'), meta: { staff: true } },
-            { path: 'settings', component: () => import('./views/SettingsView.vue'), meta: { admin: true } },
+            { path: 'logs', component: () => import('./views/LogsView.vue'), meta: { permission: 'log.view' } },
+            { path: 'settings', component: () => import('./views/SettingsView.vue'), meta: { permission: 'settings.manage' } },
             { path: '', redirect: 'tickets' },
         ],
     },
@@ -58,6 +59,7 @@ router.beforeEach((to) => {
     }
     if (to.meta.staff && !auth.isStaff) return '/m/tickets';
     if (to.meta.admin && !auth.isAdmin) return '/m/tickets';
+    if (to.meta.permission && !auth.can(to.meta.permission)) return adminPath('tickets');
     // 普通用户不能进管理后台
     if (auth.isLoggedIn && auth.user?.role === 'user' && isAdminRoute(to.path) && !to.meta.guest) {
         return '/m/tickets';

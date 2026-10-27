@@ -8,8 +8,19 @@ export const useAuthStore = defineStore('auth', {
     }),
     getters: {
         isLoggedIn: (s) => !!s.token,
-        isStaff: (s) => s.user && ['agent', 'admin'].includes(s.user.role),
-        isAdmin: (s) => s.user?.role === 'admin',
+        isStaff: (s) => !!(s.user && (s.user.permissions?.includes('panel.access') || ['agent', 'admin'].includes(s.user.role))),
+        isAdmin: (s) => !!(s.user && (s.user.permissions?.includes('*') || s.user.role === 'admin')),
+        // 细粒度权限：后端未下发 permissions 时（旧缓存）按内置角色兜底
+        can: (s) => (permission) => {
+            const user = s.user;
+            if (!user) return false;
+            if (Array.isArray(user.permissions)) {
+                return user.permissions.includes('*') || user.permissions.includes(permission);
+            }
+            if (user.role === 'admin') return true;
+            return ['panel.access', 'ticket.view_all', 'ticket.assign', 'ticket.close', 'ticket.export',
+                'ticket.internal_note', 'canned.manage', 'stats.view', 'log.view'].includes(permission);
+        },
     },
     actions: {
         save(token, user) {

@@ -43,7 +43,7 @@ class StatsController extends Controller
             ->selectRaw('agent_id, AVG(rating) as avg_rating')
             ->pluck('avg_rating', 'agent_id');
 
-        $byAgent = User::whereIn('role', ['agent', 'admin'])
+        $byAgent = User::staff()
             ->withCount([
                 'assignedTickets as assigned_count',
                 'assignedTickets as closed_count' => fn ($q) => $q->where('status', 'closed'),

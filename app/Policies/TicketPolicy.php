@@ -21,6 +21,6 @@ class TicketPolicy
 
     public function delete(User $user, Ticket $ticket): bool
     {
-        return $user->role === 'admin';
+        return $user->hasPermission('ticket.delete');
     }
 }

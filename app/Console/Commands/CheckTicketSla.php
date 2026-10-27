@@ -32,7 +32,7 @@ class CheckTicketSla extends Command
 
             $recipients = $ticket->agent_id
                 ? User::where('id', $ticket->agent_id)->get()
-                : User::whereIn('role', ['agent', 'admin'])->get();
+                : User::staff()->get();
 
             Notification::send($recipients, new TicketEventNotification($ticket, $message, 'sla_breach'));
 

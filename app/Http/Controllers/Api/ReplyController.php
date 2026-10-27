@@ -98,7 +98,7 @@ class ReplyController extends Controller
         } else {
             $recipients = $ticket->agent_id
                 ? User::where('id', $ticket->agent_id)->get()
-                : User::whereIn('role', ['agent', 'admin'])->get();
+                : User::staff()->get();
             Notification::send($recipients, new TicketEventNotification($ticket, "{$actor->name} 回复了工单 {$ticket->no}：{$preview}", 'replied'));
         }
 
@@ -132,7 +132,7 @@ class ReplyController extends Controller
             ->filter()
             ->reject(fn ($id) => $id === $actor->id);
         if ($isInternal) {
-            $participants = $participants->filter(fn ($id) => User::whereKey($id)->whereIn('role', ['agent', 'admin'])->exists());
+            $participants = $participants->filter(fn ($id) => User::whereKey($id)->staff()->exists());
         }
         GatewayPush::toUsers($participants->all(), $replyPayload);
 

@@ -12,6 +12,6 @@ class AgentController extends Controller
     /** 客服列表（用于工单指派下拉） */
     public function index(): AnonymousResourceCollection
     {
-        return UserResource::collection(User::whereIn('role', ['agent', 'admin'])->orderBy('name')->get());
+        return UserResource::collection(User::staff()->orderBy('name')->get());
     }
 }

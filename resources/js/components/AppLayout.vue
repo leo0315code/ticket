@@ -13,19 +13,22 @@
                 <el-menu-item :index="adminPath('faqs')">
                     <el-icon><Collection /></el-icon><span>知识库</span>
                 </el-menu-item>
-                <el-menu-item v-if="auth.isStaff" :index="adminPath('dashboard')">
+                <el-menu-item v-if="auth.can('stats.view')" :index="adminPath('dashboard')">
                     <el-icon><DataLine /></el-icon><span>统计看板</span>
                 </el-menu-item>
-                <el-menu-item v-if="auth.isStaff" :index="adminPath('logs')">
+                <el-menu-item v-if="auth.can('log.view')" :index="adminPath('logs')">
                     <el-icon><List /></el-icon><span>操作审计</span>
                 </el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" :index="adminPath('categories')">
+                <el-menu-item v-if="auth.can('category.manage')" :index="adminPath('categories')">
                     <el-icon><Files /></el-icon><span>分类管理</span>
                 </el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" :index="adminPath('users')">
+                <el-menu-item v-if="auth.can('user.manage')" :index="adminPath('users')">
                     <el-icon><User /></el-icon><span>用户管理</span>
                 </el-menu-item>
-                <el-menu-item v-if="auth.isAdmin" :index="adminPath('settings')">
+                <el-menu-item v-if="auth.can('role.manage')" :index="adminPath('roles')">
+                    <el-icon><Lock /></el-icon><span>角色权限</span>
+                </el-menu-item>
+                <el-menu-item v-if="auth.can('settings.manage')" :index="adminPath('settings')">
                     <el-icon><Setting /></el-icon><span>系统设置</span>
                 </el-menu-item>
             </el-menu>
@@ -48,7 +51,7 @@
                         <el-avatar :size="30" :style="{ background: avatarColor(auth.user?.name) }">
                             {{ auth.user?.name?.[0] }}
                         </el-avatar>
-                        <span class="user-name">{{ auth.user?.name }}（{{ ROLE_MAP[auth.user?.role] }}）</span>
+                        <span class="user-name">{{ auth.user?.name }}（{{ auth.user?.role_label || ROLE_MAP[auth.user?.role] || auth.user?.role }}）</span>
                         <el-icon><ArrowDown /></el-icon>
                     </span>
                     <template #dropdown>
@@ -83,7 +86,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowDown, Moon, Sunny, Tickets, EditPen, Collection, DataLine, Files, User, List, Setting } from '@element-plus/icons-vue';
+import { ArrowDown, Moon, Sunny, Tickets, EditPen, Collection, DataLine, Files, User, List, Setting, Lock } from '@element-plus/icons-vue';
 import NotificationBell from './NotificationBell.vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
@@ -104,6 +107,7 @@ const LABELS = [
     [adminPath('logs'), '操作审计'],
     [adminPath('categories'), '分类管理'],
     [adminPath('users'), '用户管理'],
+    [adminPath('roles'), '角色权限'],
     [adminPath('settings'), '系统设置'],
 ];
 const currentLabel = computed(() => {
@@ -118,8 +122,10 @@ const mobileTabs = computed(() => [
     { path: adminPath('tickets'), label: '工单', icon: Tickets },
     { path: adminPath('tickets/new'), label: '新建', icon: EditPen },
     { path: adminPath('faqs'), label: '知识库', icon: Collection },
-    ...(auth.isStaff ? [{ path: adminPath('dashboard'), label: '看板', icon: DataLine }, { path: adminPath('logs'), label: '审计', icon: List }] : []),
-    ...(auth.isAdmin ? [{ path: adminPath('categories'), label: '分类', icon: Files }, { path: adminPath('users'), label: '用户', icon: User }] : []),
+    ...(auth.can('stats.view') ? [{ path: adminPath('dashboard'), label: '看板', icon: DataLine }] : []),
+    ...(auth.can('log.view') ? [{ path: adminPath('logs'), label: '审计', icon: List }] : []),
+    ...(auth.can('category.manage') ? [{ path: adminPath('categories'), label: '分类', icon: Files }] : []),
+    ...(auth.can('user.manage') ? [{ path: adminPath('users'), label: '用户', icon: User }] : []),
 ]);
 
 function isActive(path) {

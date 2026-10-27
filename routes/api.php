@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\FaqController;
 use App\Http\Controllers\Api\NotificationController;
 use App\Http\Controllers\Api\MentionSearchController;
 use App\Http\Controllers\Api\ReplyController;
+use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketExportController;
@@ -27,14 +28,14 @@ Route::get('/captcha/issue', [CaptchaController::class, 'issue'])->middleware('t
 Route::post('/captcha/verify', [CaptchaController::class, 'verify'])->middleware('throttle:30,1');
 Route::get('/meta', [MetaController::class, 'show'])->middleware('throttle:120,1');
 
-Route::middleware(['auth:sanctum', 'throttle:240,1'])->group(function () {
+Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::put('/profile', [AuthController::class, 'updateProfile']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
-    Route::get('tickets/export', [TicketExportController::class, 'index'])->middleware('staff');
+    // 工单：可见性由 TicketPolicy 控制（客户只看自己的）
+    Route::get('tickets/export', [TicketExportController::class, 'index'])->middleware('permission:ticket.export');
     Route::post('tickets/bulk', [TicketController::class, 'bulk'])->middleware('staff');
-    Route::get('logs', [TicketLogController::class, 'index'])->middleware('staff');
     Route::apiResource('tickets', TicketController::class);
     Route::post('/tickets/{ticket}/rating', [TicketController::class, 'rate']);
     Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen']);
@@ -51,28 +52,37 @@ Route::middleware(['auth:sanctum', 'throttle:240,1'])->group(function () {
     Route::post('/faqs/{faq}/view', [FaqController::class, 'view']);
     Route::post('/faqs/{faq}/feedback', [FaqController::class, 'feedback']);
     Route::get('/mention-search', [MentionSearchController::class, 'index']);
-    Route::get('/canned-responses', [CannedResponseController::class, 'index'])->middleware('staff');
-    Route::post('/canned-responses', [CannedResponseController::class, 'store'])->middleware('staff');
-    Route::put('/canned-responses/{cannedResponse}', [CannedResponseController::class, 'update'])->middleware('staff');
-    Route::delete('/canned-responses/{cannedResponse}', [CannedResponseController::class, 'destroy'])->middleware('staff');
-    Route::post('/canned-responses/{cannedResponse}/touch', [CannedResponseController::class, 'touch'])->middleware('staff');
-    Route::get('/agents', [AgentController::class, 'index'])->middleware('staff');
-    Route::get('/stats', [StatsController::class, 'index'])->middleware('staff');
-    Route::get('/stats/ratings', [StatsController::class, 'ratings'])->middleware('staff');
     Route::get('/stats/mine', [StatsController::class, 'mine']);
+    Route::get('/agents', [AgentController::class, 'index'])->middleware('staff');
+    Route::get('/roles/options', [RoleController::class, 'options'])->middleware('staff');
 
-    Route::middleware('admin')->group(function () {
-        Route::post('/categories', [CategoryController::class, 'store']);
-        Route::put('/categories/{category}', [CategoryController::class, 'update']);
-        Route::delete('/categories/{category}', [CategoryController::class, 'destroy']);
-        Route::get('/users', [UserController::class, 'index']);
-        Route::post('/users', [UserController::class, 'store']);
-        Route::put('/users/{user}', [UserController::class, 'update']);
-        Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
-        Route::get('/settings', [SettingsController::class, 'index']);
-        Route::put('/settings', [SettingsController::class, 'update']);
-        Route::post('/faqs', [FaqController::class, 'store']);
-        Route::put('/faqs/{faq}', [FaqController::class, 'update']);
-        Route::delete('/faqs/{faq}', [FaqController::class, 'destroy']);
-    });
+    // 客服工作台
+    Route::get('logs', [TicketLogController::class, 'index'])->middleware('permission:log.view');
+    Route::get('/canned-responses', [CannedResponseController::class, 'index'])->middleware('permission:canned.manage');
+    Route::post('/canned-responses', [CannedResponseController::class, 'store'])->middleware('permission:canned.manage');
+    Route::put('/canned-responses/{cannedResponse}', [CannedResponseController::class, 'update'])->middleware('permission:canned.manage');
+    Route::delete('/canned-responses/{cannedResponse}', [CannedResponseController::class, 'destroy'])->middleware('permission:canned.manage');
+    Route::post('/canned-responses/{cannedResponse}/touch', [CannedResponseController::class, 'touch'])->middleware('permission:canned.manage');
+    Route::get('/stats', [StatsController::class, 'index'])->middleware('permission:stats.view');
+    Route::get('/stats/ratings', [StatsController::class, 'ratings'])->middleware('permission:stats.view');
+
+    // 内容维护
+    Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:category.manage');
+    Route::put('/categories/{category}', [CategoryController::class, 'update'])->middleware('permission:category.manage');
+    Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->middleware('permission:category.manage');
+    Route::post('/faqs', [FaqController::class, 'store'])->middleware('permission:faq.manage');
+    Route::put('/faqs/{faq}', [FaqController::class, 'update'])->middleware('permission:faq.manage');
+    Route::delete('/faqs/{faq}', [FaqController::class, 'destroy'])->middleware('permission:faq.manage');
+
+    // 系统管理
+    Route::get('/users', [UserController::class, 'index'])->middleware('permission:user.manage');
+    Route::post('/users', [UserController::class, 'store'])->middleware('permission:user.manage');
+    Route::put('/users/{user}', [UserController::class, 'update'])->middleware('permission:user.manage');
+    Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword'])->middleware('permission:user.manage');
+    Route::get('/roles', [RoleController::class, 'index'])->middleware('permission:role.manage');
+    Route::post('/roles', [RoleController::class, 'store'])->middleware('permission:role.manage');
+    Route::put('/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.manage');
+    Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.manage');
+    Route::get('/settings', [SettingsController::class, 'index'])->middleware('permission:settings.manage');
+    Route::put('/settings', [SettingsController::class, 'update'])->middleware('permission:settings.manage');
 });

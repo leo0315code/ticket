@@ -60,7 +60,7 @@ class TicketController extends Controller
         $ticket->log('created', $request->user()->id, "创建工单【{$ticket->title}】");
 
         // 通知全部客服：有新工单
-        Notification::send(User::whereIn('role', ['agent', 'admin'])->get(),
+        Notification::send(User::staff()->get(),
             new TicketEventNotification($ticket, "{$request->user()->name} 提交了新工单：{$ticket->title}", 'created'));
 
         return response()->json(new TicketResource($ticket->load('category')), 201);
@@ -100,8 +100,12 @@ class TicketController extends Controller
                 'status' => ['sometimes', Rule::in(Ticket::STATUSES)],
                 'priority' => ['sometimes', Rule::in(Ticket::PRIORITIES)],
                 'category_id' => ['sometimes', 'nullable', Rule::exists('categories', 'id')],
-                'agent_id' => ['sometimes', 'nullable', Rule::exists('users', 'id')->whereIn('role', ['agent', 'admin'])],
+                'agent_id' => ['sometimes', 'nullable', Rule::exists('users', 'id')->where('is_active', true)],
             ]);
+
+            if (array_key_exists('agent_id', $data) && ! $user->hasPermission('ticket.assign')) {
+                return response()->json(['message' => '没有指派工单的权限'], 403);
+            }
 
             $newStatus = $data['status'] ?? null;
             if ($newStatus === 'pending_resolved') {
@@ -181,8 +185,13 @@ class TicketController extends Controller
             'ids' => ['required', 'array', 'min:1', 'max:50'],
             'ids.*' => ['integer', 'exists:tickets,id'],
             'action' => ['required', 'in:close,assign'],
-            'agent_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->whereIn('role', ['agent', 'admin'])],
+            'agent_id' => ['required_if:action,assign', 'nullable', Rule::exists('users', 'id')->where('is_active', true)],
         ]);
+
+        $needed = $data['action'] === 'close' ? 'ticket.close' : 'ticket.assign';
+        if (! $request->user()->hasPermission($needed)) {
+            return response()->json(['message' => '没有该操作权限'], 403);
+        }
 
         $tickets = Ticket::whereIn('id', $data['ids'])->get();
         $count = 0;
@@ -281,7 +290,7 @@ class TicketController extends Controller
 
         $recipients = $ticket->agent_id
             ? User::where('id', $ticket->agent_id)->get()
-            : User::whereIn('role', ['agent', 'admin'])->get();
+            : User::staff()->get();
         Notification::send($recipients, new TicketEventNotification(
             $ticket, "{$user->name} 重新打开了工单 {$ticket->no}", 'reopened'
         ));

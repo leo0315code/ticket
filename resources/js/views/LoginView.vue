@@ -100,7 +100,7 @@ async function doLogin() {
     error.value = '';
     try {
         await auth.login(form.account, form.password);
-        if (auth.user?.role !== 'user' && ! redirectTo) {
+        if (auth.isStaff && ! redirectTo) {
             // 移动端仅普通用户：工作人员请走后台入口
             await auth.logout();
             error.value = '该账号为客服/管理员，请从后台入口登录';

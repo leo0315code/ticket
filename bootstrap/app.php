@@ -20,6 +20,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'staff' => \App\Http\Middleware\EnsureUserIsStaff::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'permission' => \App\Http\Middleware\EnsurePermission::class,
+            'active' => \App\Http\Middleware\EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

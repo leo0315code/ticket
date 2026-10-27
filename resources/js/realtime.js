@@ -12,7 +12,7 @@ const configuredUrl = window.GATEWAY_WS_URL || '';
 
 let ws = null;
 let reconnectTimer = null;
-let reconnectDelay = 3000;
+let reconnectDelay = 1000;
 let handlers = [];
 
 /** 计算最终连接的地址（同时处理 https 页面连 ws:// 的混合内容问题） */
@@ -35,17 +35,20 @@ export function realtimeUrl() {
  * onMessage: (payload) => void  payload 为通知内容 {event, message, ticket_id, ...}
  */
 export function connectRealtime(onMessage) {
-    if (! handlers.includes(onMessage)) handlers.push(onMessage);
+    if (onMessage && ! handlers.includes(onMessage)) handlers.push(onMessage);
     if (ws) return;
 
     const token = localStorage.getItem('ticket_token');
     if (! token) return;
 
     const url = realtimeUrl();
+    const startedAt = performance.now();
     ws = new WebSocket(`${url}?token=${encodeURIComponent(token)}`);
 
     ws.onopen = () => {
-        reconnectDelay = 3000;
+        reconnectDelay = 1000;
+        const cost = Math.round(performance.now() - startedAt);
+        if (cost > 800) console.info(`[realtime] WebSocket 连接耗时 ${cost}ms`);
     };
 
     ws.onmessage = (e) => {
@@ -71,9 +74,9 @@ export function connectRealtime(onMessage) {
         // 断线重连（3s 起，最长 15s）；token 失效时由 api 拦截器统一跳登录
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(() => {
-            reconnectDelay = Math.min(reconnectDelay * 1.5, 15000);
+            reconnectDelay = Math.min(reconnectDelay * 2, 15000);
             if (localStorage.getItem('ticket_token')) {
-                connectRealtime(onMessage);
+                connectRealtime();
             }
         }, reconnectDelay);
     };
@@ -83,4 +86,19 @@ export async function fetchNotifications() {
     const { data } = await http.get('/notifications');
 
     return data;
+}
+
+/** 立刻重连（网络恢复 / 页面重新可见时调用，不等退避计时器） */
+export function reconnectNow() {
+    if (ws || ! localStorage.getItem('ticket_token')) return;
+    clearTimeout(reconnectTimer);
+    reconnectDelay = 1000;
+    connectRealtime();
+}
+
+if (typeof window !== 'undefined') {
+    window.addEventListener('online', reconnectNow);
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible') reconnectNow();
+    });
 }

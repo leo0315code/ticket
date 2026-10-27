@@ -28,6 +28,8 @@ class TicketResource extends JsonResource
             'resolved_at' => $this->resolved_at?->format('Y-m-d H:i'),
             'closed_at' => $this->closed_at?->format('Y-m-d H:i'),
             'sla_due_at' => $this->sla_due_at?->format('Y-m-d H:i'),
+            'resolution_due_at' => $this->resolution_due_at?->format('Y-m-d H:i'),
+            'resolution_overdue' => $this->isResolutionOverdue(),
             'first_response_at' => $this->first_response_at?->format('Y-m-d H:i'),
             'closed_reason' => $this->closed_reason,
             'reopen_count' => (int) ($this->reopen_count ?? 0),

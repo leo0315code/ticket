@@ -39,10 +39,40 @@ class CheckTicketSla extends Command
             $this->warn("SLA 超时：{$ticket->no} {$ticket->title}");
         }
 
+        $this->checkResolutionSla();
+
         if ($overdue->isEmpty()) {
             $this->info('没有超时工单。');
         }
 
         return self::SUCCESS;
+    }
+
+    /** 解决时限超期：每 24 小时提醒一次（用日志去重，避免每小时轰炸） */
+    private function checkResolutionSla(): void
+    {
+        $overdue = Ticket::with(['agent', 'user'])
+            ->whereNotNull('resolution_due_at')
+            ->whereNull('resolved_at')
+            ->whereNotIn('status', ['pending_resolved', 'closed'])
+            ->where('resolution_due_at', '<', now())
+            ->whereDoesntHave('logs', fn ($q) => $q->where('action', 'resolution_overdue_alert')
+                ->where('created_at', '>=', now()->subDay()))
+            ->get();
+
+        foreach ($overdue as $ticket) {
+            $ticket->log('resolution_overdue_alert', null,
+                '超过解决时限（'.($ticket->resolution_due_at?->format('Y-m-d H:i') ?? '').'）');
+
+            $message = "工单 {$ticket->no} 已超过解决时限（优先级：".(Ticket::PRIORITY_LABELS[$ticket->priority] ?? $ticket->priority).'）';
+
+            $recipients = $ticket->agent_id
+                ? User::where('id', $ticket->agent_id)->get()
+                : User::staff()->get();
+
+            Notification::send($recipients, new TicketEventNotification($ticket, $message, 'resolution_overdue'));
+
+            $this->warn("解决超期：{$ticket->no} {$ticket->title}");
+        }
     }
 }

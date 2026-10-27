@@ -160,6 +160,37 @@
             </el-form-item>
         </el-form>
 
+        <h4 class="section">解决时限（SLA）</h4>
+        <el-form label-width="150px" style="max-width: 660px">
+            <el-form-item v-for="p in priorities" :key="`r-${p.key}`" :label="`${p.label}工单`">
+                <el-input-number v-model="form.resolution_hours[p.key]" :min="1" :max="720" />
+                <span class="hint">营业小时内解决，仅用于达标率统计与超期提醒</span>
+            </el-form-item>
+            <el-form-item label="按营业时间计算">
+                <el-switch v-model="form.business_hours_enabled" />
+                <span class="hint">开启后非工作时间不计入解决时限</span>
+            </el-form-item>
+            <template v-if="form.business_hours_enabled">
+                <el-form-item label="工作时间">
+                    <el-time-select v-model="form.business_hours_start" start="00:00" step="00:30" end="23:30" style="width: 130px" />
+                    <span style="margin: 0 8px">至</span>
+                    <el-time-select v-model="form.business_hours_end" start="00:30" step="00:30" end="23:59" style="width: 130px" />
+                </el-form-item>
+                <el-form-item label="工作日">
+                    <el-checkbox-group v-model="form.business_hours_days">
+                        <el-checkbox v-for="(label, idx) in weekdays" :key="idx" :value="idx + 1">{{ label }}</el-checkbox>
+                    </el-checkbox-group>
+                </el-form-item>
+                <el-form-item label="时区">
+                    <el-select v-model="form.business_timezone" filterable style="width: 240px">
+                        <el-option label="Asia/Shanghai（北京时间）" value="Asia/Shanghai" />
+                        <el-option label="Asia/Hong_Kong" value="Asia/Hong_Kong" />
+                        <el-option label="UTC" value="UTC" />
+                    </el-select>
+                </el-form-item>
+            </template>
+        </el-form>
+
         <h4 class="section">工单生命周期</h4>
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item label="待确认自动关闭">
@@ -185,6 +216,7 @@ import { notifyError } from '../notify';
 import http from '../api';
 import { loadMeta } from '../meta';
 
+const weekdays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
 const priorities = [
     { key: 'urgent', label: '紧急' },
     { key: 'high', label: '高优' },
@@ -202,6 +234,12 @@ const form = reactive({
     attach_max_count: 10,
     attach_quota_mb: 0,
     sla_hours: { urgent: 4, high: 8, medium: 24, low: 72 },
+    resolution_hours: { urgent: 24, high: 48, medium: 72, low: 120 },
+    business_hours_enabled: false,
+    business_hours_start: '09:00',
+    business_hours_end: '18:00',
+    business_hours_days: [1, 2, 3, 4, 5],
+    business_timezone: 'Asia/Shanghai',
     auto_close_days: 7,
     reopen_days: 14,
     reopen_limit: 3,

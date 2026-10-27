@@ -32,6 +32,12 @@
                             <span v-else>-</span>
                         </el-descriptions-item>
                         <el-descriptions-item label="首次响应">{{ ticket.first_response_at || '未响应' }}</el-descriptions-item>
+                        <el-descriptions-item label="解决期限">
+                            <span v-if="ticket.resolution_due_at" :style="ticket.resolution_overdue ? 'color:#f56c6c;font-weight:600' : ''">
+                                {{ ticket.resolution_due_at }}{{ ticket.resolution_overdue ? '（已超期）' : '' }}
+                            </span>
+                            <span v-else>-</span>
+                        </el-descriptions-item>
                         <el-descriptions-item label="">{{ '' }}</el-descriptions-item>
                     </el-descriptions>
 

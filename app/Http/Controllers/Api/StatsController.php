@@ -72,6 +72,12 @@ class StatsController extends Controller
         $respondedCount = (clone $responded)->count();
         $onTimeCount = (clone $responded)->whereColumn('first_response_at', '<=', 'sla_due_at')->count();
 
+        // 解决时限合规率：只看区间内已解决且算得出期限的工单
+        $resolved = Ticket::where('created_at', '>=', $from)
+            ->whereNotNull('resolved_at')->whereNotNull('resolution_due_at');
+        $resolvedCount = (clone $resolved)->count();
+        $resolvedOnTime = (clone $resolved)->whereColumn('resolved_at', '<=', 'resolution_due_at')->count();
+
         return response()->json([
             'by_agent' => $byAgent,
             'range' => [
@@ -81,6 +87,12 @@ class StatsController extends Controller
                 'responded' => $respondedCount,
                 'on_time' => $onTimeCount,
                 'sla_rate' => $respondedCount > 0 ? round($onTimeCount / $respondedCount * 100, 1) : null,
+                'resolved' => $resolvedCount,
+                'resolved_on_time' => $resolvedOnTime,
+                'resolution_rate' => $resolvedCount > 0 ? round($resolvedOnTime / $resolvedCount * 100, 1) : null,
+                'resolution_overdue' => Ticket::whereNotNull('resolution_due_at')
+                    ->whereNull('resolved_at')->whereNotIn('status', ['pending_resolved', 'closed'])
+                    ->where('resolution_due_at', '<', now())->count(),
             ],
             'total' => Ticket::count(),
             'unhandled' => $byStatus['open'] + $byStatus['in_progress'],

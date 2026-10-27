@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Support\Settings;
+use App\Support\Sla;
 
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -51,7 +52,7 @@ class Ticket extends Model
         'no', 'title', 'content', 'status', 'priority',
         'user_id', 'agent_id', 'category_id',
         'resolved_at', 'closed_at', 'rating', 'rating_comment',
-        'sla_due_at', 'first_response_at',
+        'sla_due_at', 'resolution_due_at', 'first_response_at',
         'closed_reason', 'reopen_count', 'last_activity_at',
     ];
 
@@ -63,11 +64,34 @@ class Ticket extends Model
             'resolved_at' => 'datetime',
             'closed_at' => 'datetime',
             'sla_due_at' => 'datetime',
+            'resolution_due_at' => 'datetime',
             'first_response_at' => 'datetime',
             'last_activity_at' => 'datetime',
             'reopen_count' => 'integer',
             'deleted_at' => 'datetime',
         ];
+    }
+
+    /** 按优先级取解决时限（营业小时，后台可配） */
+    public static function resolutionHours(string $priority): int
+    {
+        $hours = Settings::get('resolution_hours', ['urgent' => 24, 'high' => 48, 'medium' => 72, 'low' => 120]);
+
+        return (int) ($hours[$priority] ?? 72);
+    }
+
+    public static function resolutionDueFor(string $priority, ?\Carbon\CarbonInterface $from = null): \Carbon\CarbonInterface
+    {
+        return Sla::resolutionDueAt($from ?? now(), $priority);
+    }
+
+    /** 解决时限已过且仍未解决（关闭/待确认都算已解决） */
+    public function isResolutionOverdue(): bool
+    {
+        return $this->resolution_due_at !== null
+            && $this->resolved_at === null
+            && ! in_array($this->status, ['pending_resolved', 'closed'], true)
+            && $this->resolution_due_at->isPast();
     }
 
     /** 超时＝首次响应时限已过且尚未响应（已响应的工单不再算超时） */

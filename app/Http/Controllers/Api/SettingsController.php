@@ -41,6 +41,17 @@ class SettingsController extends Controller
             'sla_hours.high' => ['sometimes', 'integer', 'min:1', 'max:168'],
             'sla_hours.medium' => ['sometimes', 'integer', 'min:1', 'max:168'],
             'sla_hours.low' => ['sometimes', 'integer', 'min:1', 'max:168'],
+            'resolution_hours' => ['sometimes', 'array'],
+            'resolution_hours.urgent' => ['sometimes', 'integer', 'min:1', 'max:720'],
+            'resolution_hours.high' => ['sometimes', 'integer', 'min:1', 'max:720'],
+            'resolution_hours.medium' => ['sometimes', 'integer', 'min:1', 'max:720'],
+            'resolution_hours.low' => ['sometimes', 'integer', 'min:1', 'max:720'],
+            'business_hours_enabled' => ['sometimes', 'boolean'],
+            'business_hours_start' => ['sometimes', 'date_format:H:i'],
+            'business_hours_end' => ['sometimes', 'date_format:H:i', 'after:business_hours_start'],
+            'business_hours_days' => ['sometimes', 'array', 'min:1'],
+            'business_hours_days.*' => ['integer', 'between:1,7'],
+            'business_timezone' => ['sometimes', 'timezone'],
             'auto_close_days' => ['sometimes', 'integer', 'min:1', 'max:90'],
             'reopen_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
             'reopen_limit' => ['sometimes', 'integer', 'min:0', 'max:20'],
@@ -77,6 +88,17 @@ class SettingsController extends Controller
             if (array_key_exists($key, $data) && blank($data[$key])) {
                 unset($data[$key]);
             }
+        }
+
+        if (isset($data['resolution_hours'])) {
+            $data['resolution_hours'] = array_intersect_key(
+                array_replace(Settings::get('resolution_hours'), $data['resolution_hours']),
+                ['urgent' => 1, 'high' => 1, 'medium' => 1, 'low' => 1],
+            );
+        }
+
+        if (isset($data['business_hours_days'])) {
+            $data['business_hours_days'] = array_values(array_unique(array_map('intval', $data['business_hours_days'])));
         }
 
         if (isset($data['sla_hours'])) {

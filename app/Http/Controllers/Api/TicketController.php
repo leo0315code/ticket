@@ -52,6 +52,7 @@ class TicketController extends Controller
             'no' => Ticket::nextNo(),
             'status' => 'open',
             'sla_due_at' => now()->addHours(Ticket::slaHours($data['priority'])),
+            'resolution_due_at' => Ticket::resolutionDueFor($data['priority']),
             'last_activity_at' => now(),
         ]), 30);
         $ticket->log('created', $request->user()->id, "创建工单【{$ticket->title}】");
@@ -124,6 +125,7 @@ class TicketController extends Controller
             if (isset($data['priority']) && $data['priority'] !== $ticket->priority) {
                 $data['sla_due_at'] = $ticket->created_at->copy()
                     ->addHours(Ticket::slaHours($data['priority']));
+                $data['resolution_due_at'] = Ticket::resolutionDueFor($data['priority'], $ticket->created_at);
             }
             $data['last_activity_at'] = now();
         } else {

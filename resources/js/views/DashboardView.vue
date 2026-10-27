@@ -11,6 +11,10 @@
                 新增 {{ stats.range.new }} · 关闭 {{ stats.range.closed }} · 首次响应合规
                 <b>{{ stats.range.sla_rate !== null ? stats.range.sla_rate + '%' : '—' }}</b>
                 <template v-if="stats.range.responded">（{{ stats.range.on_time }}/{{ stats.range.responded }}）</template>
+                · 解决合规
+                <b>{{ stats.range.resolution_rate !== null ? stats.range.resolution_rate + '%' : '—' }}</b>
+                <template v-if="stats.range.resolved">（{{ stats.range.resolved_on_time }}/{{ stats.range.resolved }}）</template>
+                <template v-if="stats.range.resolution_overdue">· 超期 {{ stats.range.resolution_overdue }}</template>
             </span>
         </div>
 

@@ -6,8 +6,13 @@
                 <span class="name">{{ site.site_name || '帮助中心' }}</span>
             </div>
             <div class="actions">
-                <el-button v-if="auth.isLoggedIn" text @click="goApp">{{ auth.isStaff ? '进入工作台' : '我的工单' }}</el-button>
-                <el-button v-else text @click="$router.push('/login')">登录</el-button>
+                <template v-if="auth.isLoggedIn">
+                    <el-button text @click="goApp">{{ auth.isStaff ? '进入工作台' : '我的工单' }}</el-button>
+                </template>
+                <template v-else>
+                    <el-button text @click="$router.push('/login')">登录 / 注册</el-button>
+                    <el-button text @click="$router.push(adminLoginPath)">客服入口</el-button>
+                </template>
             </div>
         </header>
 
@@ -72,6 +77,8 @@ import http from '../api';
 import { loadMeta, meta } from '../meta';
 import { useAuthStore } from '../stores/auth';
 import { adminPath } from '../paths';
+
+const adminLoginPath = adminPath('login');
 
 const router = useRouter();
 const auth = useAuthStore();

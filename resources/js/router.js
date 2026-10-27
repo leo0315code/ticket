@@ -1,4 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
+import { clearErrors } from './notify';
 import { ADMIN_BASE, adminPath, homePath, isAdminRoute, ticketPath } from './paths';
 import { useAuthStore } from './stores/auth';
 
@@ -78,5 +79,8 @@ router.beforeEach((to) => {
     }
     return true;
 });
+
+// 页面切换后，上一个页面残留的常驻错误提示不应跟着走
+router.afterEach(() => clearErrors());
 
 export default router;

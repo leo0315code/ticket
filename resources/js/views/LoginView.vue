@@ -1,110 +1,82 @@
 <template>
     <div class="login-page">
-        <el-icon :size="22" class="theme-toggle" @click="dark = toggleTheme()">
+        <el-icon :size="20" class="theme-toggle" @click="dark = toggleTheme()">
             <Moon v-if="!dark" />
             <Sunny v-else />
         </el-icon>
 
-        <div class="panel">
-            <!-- 左侧品牌区 -->
-            <div class="brand-side">
-                <div class="brand-logo">🎫</div>
-                <h1>{{ site.site_name }}</h1>
-                <p class="slogan">问题提交 · 快速响应 · 全程可追踪</p>
-                <ul class="features">
-                    <li>⚡ SLA 时限保障，超时自动提醒客服</li>
-                    <li>🔔 回复与状态变更实时通知</li>
-                    <li>📎 支持附件，操作留痕可回溯</li>
-                    <li>📚 知识库自助解决常见问题</li>
-                </ul>
+        <div class="card">
+            <h1 class="title">{{ pane === 'register' ? '注册' + site.site_name : '登录' + site.site_name }}</h1>
+
+            <div v-if="pane === 'login'" class="tabs">
+                <button v-if="site.phone_login_enabled" :class="{ active: mode === 'phone' }" @click="mode = 'phone'">手机登录</button>
+                <button :class="{ active: mode === 'password' }" @click="mode = 'password'">账号密码登录</button>
+                <button v-if="site.wechat_login_enabled" :class="{ active: mode === 'wechat' }" @click="mode = 'wechat'">微信扫码</button>
             </div>
 
-            <!-- 右侧表单区 -->
-            <div class="form-side">
-                <el-tabs v-model="tab" stretch>
-                    <el-tab-pane label="登录" name="login">
-                        <el-form v-if="mode === 'password'" @submit.prevent="doLogin">
-                            <el-form-item>
-                                <el-input v-model="form.account" placeholder="用户名 / 邮箱" size="large" clearable>
-                                    <template #prefix><el-icon><User /></el-icon></template>
-                                </el-input>
-                            </el-form-item>
-                            <el-form-item>
-                                <el-input v-model="form.password" type="password" placeholder="密码" show-password size="large" @keyup.enter="doLogin">
-                                    <template #prefix><el-icon><Lock /></el-icon></template>
-                                </el-input>
-                            </el-form-item>
-                            <el-button type="primary" size="large" class="submit" :loading="loading" @click="doLogin">登 录</el-button>
-                            <div class="tips">
-                                演示账号：xiaoming / xiaohong，密码 <b>password</b><br />
-                                客服与管理员请从后台入口登录
-                            </div>
-                        </el-form>
+            <!-- 手机号验证码 -->
+            <div v-if="pane === 'login' && mode === 'phone'" class="form">
+                <label>手机号</label>
+                <el-input v-model="phone.phone" maxlength="11" size="large" placeholder="请输入你的手机号" clearable />
 
-                        <el-form v-else-if="mode === 'phone'" @submit.prevent="doPhoneLogin">
-                            <el-form-item>
-                                <el-input v-model="phone.phone" maxlength="11" placeholder="手机号" size="large" clearable>
-                                    <template #prefix><el-icon><Iphone /></el-icon></template>
-                                </el-input>
-                            </el-form-item>
-                            <el-form-item>
-                                <div class="code-row">
-                                    <el-input v-model="phone.code" maxlength="6" placeholder="6 位验证码" size="large">
-                                        <template #prefix><el-icon><Message /></el-icon></template>
-                                    </el-input>
-                                    <el-button size="large" :disabled="countdown > 0 || phoneSending" :loading="phoneSending" @click="sendPhoneCode">
-                                        {{ countdown > 0 ? countdown + 's' : '获取验证码' }}
-                                    </el-button>
-                                </div>
-                            </el-form-item>
-                            <el-button type="primary" size="large" class="submit" :loading="loading" @click="doPhoneLogin">登 录</el-button>
-                            <div class="tips">未注册的手机号验证通过后会自动创建账号</div>
-                        </el-form>
+                <label>验证码</label>
+                <div class="code-row">
+                    <el-input v-model="phone.code" maxlength="6" size="large" placeholder="请输入 6 位数字" />
+                    <el-button class="code-btn" :disabled="countdown > 0 || phoneSending" :loading="phoneSending" @click="sendPhoneCode">
+                        {{ countdown > 0 ? countdown + 's' : '发送验证码' }}
+                    </el-button>
+                </div>
 
-                        <div v-else class="wechat-box">
-                            <el-button type="success" size="large" class="submit" :loading="wechatLoading" @click="doWechatLogin">微信扫码登录</el-button>
-                            <div class="tips">跳转到微信授权页，扫码确认后自动回到这里<br />微信需先在「账号设置」中绑定</div>
-                        </div>
+                <el-button class="submit" :loading="loading" @click="doPhoneLogin">登 录</el-button>
+                <p class="terms">手机验证后自动注册登录，登录即代表同意<a @click="$router.push('/help')">帮助中心</a>相关条款</p>
+            </div>
 
-                        <div v-if="site.phone_login_enabled || site.wechat_login_enabled" class="alt-methods">
-                            <span class="alt-line"></span>
-                            <span class="alt-label">其他方式</span>
-                            <el-button v-if="site.phone_login_enabled" link type="primary" @click="mode = mode === 'phone' ? 'password' : 'phone'">
-                                {{ mode === 'phone' ? '密码登录' : '手机号验证码' }}
-                            </el-button>
-                            <el-button v-if="site.wechat_login_enabled" link type="success" @click="doWechatLogin">微信扫码</el-button>
-                            <span class="alt-line"></span>
-                        </div>
+            <!-- 账号密码 -->
+            <div v-else-if="pane === 'login' && mode === 'password'" class="form">
+                <label>账号</label>
+                <el-input v-model="form.account" size="large" placeholder="用户名 / 邮箱" clearable />
 
-                        <div class="forgot">
-                            <el-link type="primary" underline="never" @click="$router.push('/forgot-password')">忘记密码？</el-link>
-                            <el-link type="info" underline="never" @click="$router.push('/help')">帮助中心</el-link>
-                        </div>
-                    </el-tab-pane>
+                <label>密码</label>
+                <el-input v-model="form.password" type="password" size="large" placeholder="请输入密码" show-password @keyup.enter="doLogin" />
 
-                    <el-tab-pane v-if="site.allow_register" label="注册" name="register">
-                        <el-form @submit.prevent="doRegister">
-                            <el-form-item>
-                                <el-input v-model="reg.name" placeholder="昵称" size="large">
-                                    <template #prefix><el-icon><Postcard /></el-icon></template>
-                                </el-input>
-                            </el-form-item>
-                            <el-form-item>
-                                <el-input v-model="reg.username" placeholder="账号（2-30 位中文/字母/数字/下划线）" size="large">
-                                    <template #prefix><el-icon><User /></el-icon></template>
-                                </el-input>
-                            </el-form-item>
-                            <el-form-item>
-                                <el-input v-model="reg.password" type="password" placeholder="密码（至少 8 位）" show-password size="large" @keyup.enter="doRegister">
-                                    <template #prefix><el-icon><Lock /></el-icon></template>
-                                </el-input>
-                            </el-form-item>
-                            <el-button type="primary" size="large" class="submit" :loading="loading" @click="doRegister">注 册</el-button>
-                            <div class="tips">邮箱选填：注册后可在「我的 → 账号设置」绑定，用于接收邮件通知</div>
-                        </el-form>
-                    </el-tab-pane>
-                </el-tabs>
-                <el-alert v-if="error" :title="error" type="error" :closable="false" style="margin-top: 12px" />
+                <el-button class="submit" :loading="loading" @click="doLogin">登 录</el-button>
+                <p class="terms">
+                    <a @click="$router.push('/forgot-password')">忘记密码？</a>
+                    <a @click="$router.push('/help')">帮助中心</a>
+                </p>
+            </div>
+
+            <!-- 微信扫码 -->
+            <div v-else-if="pane === 'login'" class="form wechat">
+                <el-button class="submit wechat-btn" :loading="wechatLoading" @click="doWechatLogin">微信扫码登录</el-button>
+                <p class="terms">跳转微信授权页，扫码确认后自动回到这里；微信需先在「账号设置」中绑定</p>
+            </div>
+
+            <!-- 注册 -->
+            <div v-else class="form">
+                <label>昵称</label>
+                <el-input v-model="reg.name" size="large" placeholder="展示给客服的称呼" />
+
+                <label>账号</label>
+                <el-input v-model="reg.username" size="large" placeholder="2-30 位中文 / 字母 / 数字 / 下划线" />
+
+                <label>密码</label>
+                <el-input v-model="reg.password" type="password" size="large" placeholder="至少 8 位" show-password @keyup.enter="doRegister" />
+
+                <el-button class="submit" :loading="loading" @click="doRegister">注 册</el-button>
+                <p class="terms">邮箱选填，注册后可在「我的 → 账号设置」绑定</p>
+            </div>
+
+            <el-alert v-if="error" :title="error" type="error" :closable="false" class="error" />
+
+            <div class="foot">
+                <template v-if="pane === 'register'">
+                    <a @click="pane = 'login'">已有账号，去登录</a>
+                </template>
+                <template v-else>
+                    <a v-if="site.allow_register" @click="pane = 'register'">注册账号</a>
+                    <a @click="$router.push('/help')">帮助中心</a>
+                </template>
             </div>
         </div>
     </div>
@@ -114,7 +86,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { User, Lock, Postcard, Moon, Sunny, Iphone, Message } from '@element-plus/icons-vue';
+import { Moon, Sunny } from '@element-plus/icons-vue';
 import http from '../api';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
@@ -122,39 +94,47 @@ import { homePath } from '../paths';
 import { loadMeta, meta } from '../meta';
 
 const dark = ref(document.documentElement.classList.contains('dark'));
-const tab = ref('login');
-const loading = ref(false);
-const error = ref('');
-const mode = ref('password');
-const form = reactive({ account: '', password: '' });
-const phone = reactive({ phone: '', code: '' });
-const phoneSending = ref(false);
-const countdown = ref(0);
-const wechatLoading = ref(false);
-let countdownTimer = null;
-const reg = reactive({ name: '', username: '', password: '' });
 const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const redirectTo = typeof route.query.redirect === 'string' ? route.query.redirect : '';
-// 站点信息（注册开关）决定是否展示注册入口
-const site = reactive({ ...meta() });
 
-onMounted(async () => Object.assign(site, await loadMeta()));
+const site = reactive({ ...meta() });
+const pane = ref('login');
+// 登录方式：phone / password / wechat
+const mode = ref(site.phone_login_enabled ? 'phone' : 'password');
+const loading = ref(false);
+const error = ref('');
+
+const form = reactive({ account: '', password: '' });
+const phone = reactive({ phone: '', code: '' });
+const phoneSending = ref(false);
+const countdown = ref(0);
+let countdownTimer = null;
+const wechatLoading = ref(false);
+const reg = reactive({ name: '', username: '', password: '' });
+
+onMounted(async () => {
+    Object.assign(site, await loadMeta());
+    // 开了手机号登录就默认用它（更省事），否则用账号密码
+    if (site.phone_login_enabled && mode.value === 'password') mode.value = 'phone';
+});
+
+function afterLogin() {
+    router.push(redirectTo || homePath());
+}
 
 async function doLogin() {
     loading.value = true;
     error.value = '';
     try {
         await auth.login(form.account, form.password);
-        if (auth.isStaff && ! redirectTo) {
-            // 移动端仅普通用户：工作人员请走后台入口
+        if (auth.isStaff && !redirectTo) {
             await auth.logout();
             error.value = '该账号为客服/管理员，请从后台入口登录';
             return;
         }
-        // 有回跳目标（邮件/分享深链）时按目标走；客服会被路由再送到后台工单页
-        router.push(redirectTo || '/m/tickets');
+        afterLogin();
     } catch (e) {
         error.value = e.response?.data?.message || '登录失败';
     } finally {
@@ -190,7 +170,7 @@ async function doPhoneLogin() {
     error.value = '';
     try {
         await auth.loginWithPhone(phone.phone, phone.code);
-        router.push(redirectTo || homePath());
+        afterLogin();
     } catch (e) {
         error.value = e.response?.data?.message || '登录失败';
     } finally {
@@ -218,7 +198,7 @@ async function doRegister() {
     try {
         await auth.register(reg.name, reg.username, reg.password);
         ElMessage.success('注册成功，欢迎！');
-        router.push('/m/tickets');
+        afterLogin();
     } catch (e) {
         const errors = e.response?.data?.errors;
         error.value = e.response?.data?.message || (errors ? Object.values(errors).flat().join('；') : '注册失败');
@@ -234,185 +214,158 @@ async function doRegister() {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: #f2f5f8;
     position: relative;
+    padding: 24px;
+    box-sizing: border-box;
+}
+:global(html.dark) .login-page {
+    background: #0f1014;
 }
 .theme-toggle {
     position: absolute;
-    top: 24px;
-    right: 28px;
+    top: 22px;
+    right: 26px;
     cursor: pointer;
-    color: #fff;
-}
-.panel {
-    display: flex;
-    width: 860px;
-    max-width: 94vw;
-    min-height: 520px;
-    border-radius: 16px;
-    overflow: hidden;
-    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3);
-}
-.brand-side {
-    flex: 1;
-    background: linear-gradient(160deg, #5b6ee8, #8e54c9);
-    color: #fff;
-    padding: 56px 40px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-.brand-logo {
-    width: 64px;
-    height: 64px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 34px;
-    line-height: 1;
-    border-radius: 18px;
-    background: rgba(255, 255, 255, 0.16);
-    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(6px);
-}
-.brand-side h1 {
-    margin: 12px 0 8px;
-    font-size: 28px;
-}
-.slogan {
-    opacity: 0.9;
-    margin-bottom: 28px;
-}
-.features {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    line-height: 2.2;
-    font-size: 14px;
-    opacity: 0.95;
-}
-.form-side {
-    width: 400px;
-    background: var(--el-bg-color);
-    padding: 40px 36px;
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-}
-.submit {
-    width: 100%;
-    margin-top: 4px;
-}
-/* 暗色模式：整页与品牌侧一起变深，避免「一半紫一半黑」 */
-:global(html.dark) .login-page {
-    background: radial-gradient(120% 120% at 20% 0%, #232946 0%, #12131a 60%, #0d0e14 100%);
-}
-:global(html.dark) .brand-side {
-    background: linear-gradient(160deg, #2b2f55, #3b2b55);
-}
-:global(html.dark) .brand-logo {
-    background: rgba(255, 255, 255, 0.1);
-}
-:global(html.dark) .theme-toggle {
-    color: var(--el-text-color-primary);
-}
-
-@media (max-width: 768px) {
-    .brand-side {
-        display: none;
-    }
-    .panel {
-        width: 420px;
-        padding: 28px 18px;
-    }
-    .login-page {
-        background: linear-gradient(165deg, #5b6ee8 0%, #8e54c9 100%);
-    }
-    :global(html.dark) .login-page {
-        background: linear-gradient(165deg, #232946 0%, #12131a 100%);
-    }
-    .form-side :deep(.el-tabs__nav) {
-        width: 100%;
-    }
-    .form-side :deep(.el-tabs__item) {
-        font-size: 16px;
-        padding: 0 16px;
-    }
-    /* 输入放大（防 iOS 聚焦缩放） */
-    .form-side :deep(.el-input__inner) {
-        height: 46px;
-        font-size: 16px;
-    }
-    .form-side :deep(.el-input__wrapper) {
-        border-radius: 10px;
-    }
-    .form-side :deep(.el-input__inner::placeholder) {
-        color: var(--el-text-color-secondary);
-    }
-    .submit {
-        height: 48px;
-        font-size: 16px;
-        border-radius: 12px;
-        letter-spacing: 2px;
-        margin-top: 8px;
-    }
-    .forgot {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 12px;
-    font-size: 13px;
-}
-.tips {
-        font-size: 12px;
-        line-height: 1.9;
-        border-radius: 10px;
-        padding: 10px 14px;
-    }
-    .login-page :deep(.el-alert) {
-        border-radius: 10px;
-    }
-}
-.forgot {
-    display: flex;
-    justify-content: space-between;
-    margin-top: 12px;
-    font-size: 13px;
-}
-.tips {
-    margin-top: 18px;
-    font-size: 12px;
     color: var(--el-text-color-secondary);
-    background: var(--el-fill-color-light);
-    border-radius: 6px;
-    padding: 8px 12px;
-    line-height: 1.7;
+}
+.card {
+    width: 420px;
+    max-width: 100%;
+    background: var(--el-bg-color);
+    border-radius: 8px;
+    padding: 40px 36px 28px;
+    box-shadow: 0 2px 16px rgba(31, 45, 61, 0.07);
+}
+:global(html.dark) .card {
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--el-border-color-lighter);
+}
+.title {
+    margin: 0 0 26px;
+    font-size: 26px;
+    font-weight: 600;
+    letter-spacing: 1px;
+}
+.tabs {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid var(--el-border-color);
+    margin-bottom: 6px;
+}
+.tabs button {
+    background: none;
+    border: none;
+    padding: 0 4px 12px;
+    margin-right: 26px;
+    font-size: 15px;
+    color: var(--el-text-color-regular);
+    cursor: pointer;
+    position: relative;
+}
+.tabs button.active {
+    color: var(--el-color-primary);
+    font-weight: 500;
+}
+.tabs button.active::after {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: -1px;
+    height: 2px;
+    background: var(--el-color-primary);
+    border-radius: 2px;
+}
+label {
+    display: block;
+    margin: 18px 0 8px;
+    font-size: 14px;
+    color: var(--el-text-color-regular);
 }
 .code-row {
     display: flex;
-    gap: 8px;
-    width: 100%;
+    gap: 10px;
 }
 .code-row .el-input {
     flex: 1;
 }
-.alt-methods {
-    margin-top: 16px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
+.code-btn {
+    width: 116px;
+    height: 40px;
+    color: #fff;
+    background: var(--el-color-primary);
+    border-color: var(--el-color-primary);
+}
+.code-btn:hover {
+    color: #fff;
+    background: var(--el-color-primary-light-3);
+    border-color: var(--el-color-primary-light-3);
+}
+.code-btn.is-disabled {
+    color: #fff;
+    background: var(--el-color-primary-light-5);
+    border-color: var(--el-color-primary-light-5);
+}
+.submit {
+    width: 100%;
+    height: 44px;
+    margin-top: 26px;
+    font-size: 15px;
+    letter-spacing: 4px;
+    color: #fff;
+    background: #33415c;
+    border-color: #33415c;
+}
+.submit:hover {
+    color: #fff;
+    background: #26334d;
+    border-color: #26334d;
+}
+.wechat-btn {
+    background: #2aae67;
+    border-color: #2aae67;
+}
+.wechat-btn:hover {
+    background: #23995a;
+    border-color: #23995a;
+}
+.terms {
+    margin: 14px 0 0;
     font-size: 12px;
-}
-.alt-line {
-    flex: 1;
-    height: 1px;
-    background: var(--el-border-color-lighter);
-}
-.alt-label {
+    line-height: 1.9;
     color: var(--el-text-color-secondary);
-    font-size: 12px;
-    white-space: nowrap;
 }
-.wechat-box {
-    padding: 6px 0;
+.terms a,
+.foot a {
+    color: var(--el-color-primary);
+    cursor: pointer;
+    text-decoration: none;
+}
+.terms a {
+    margin-right: 14px;
+}
+.terms a:last-child {
+    margin-right: 0;
+}
+.error {
+    margin-top: 16px;
+}
+.foot {
+    margin-top: 22px;
+    padding-top: 16px;
+    border-top: 1px solid var(--el-border-color-lighter);
+    display: flex;
+    gap: 18px;
+    justify-content: flex-end;
+    font-size: 13px;
+}
+@media (max-width: 480px) {
+    .card {
+        padding: 30px 22px 22px;
+    }
+    .title {
+        font-size: 22px;
+    }
 }
 </style>

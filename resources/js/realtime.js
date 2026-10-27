@@ -11,6 +11,7 @@ import http from './api';
 const configuredUrl = window.GATEWAY_WS_URL || '';
 
 let ws = null;
+let connecting = null;
 let reconnectTimer = null;
 let reconnectDelay = 1000;
 let handlers = [];
@@ -31,19 +32,45 @@ export function realtimeUrl() {
 }
 
 /**
+ * 换取一次性连接票据（60 秒有效、只能用一次）
+ * 长期 token 不再拼进 WS URL，避免落进 nginx 日志 / 浏览器历史。
+ */
+async function fetchTicket() {
+    const token = localStorage.getItem('ticket_token');
+    if (! token) return null;
+
+    try {
+        const res = await fetch('/api/ws-ticket', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        });
+        if (! res.ok) return null;
+        const data = await res.json();
+
+        return data.ticket || null;
+    } catch {
+        return null;
+    }
+}
+
+/**
  * 即时消息连接（GatewayWorker WebSocket）
  * onMessage: (payload) => void  payload 为通知内容 {event, message, ticket_id, ...}
  */
-export function connectRealtime(onMessage) {
+export async function connectRealtime(onMessage) {
     if (onMessage && ! handlers.includes(onMessage)) handlers.push(onMessage);
-    if (ws) return;
+    if (ws || connecting) return;
 
-    const token = localStorage.getItem('ticket_token');
-    if (! token) return;
+    connecting = fetchTicket();
+    const ticket = await connecting;
+    connecting = null;
+
+    // 没有票据（未登录 / 接口失败）就等下次触发重连
+    if (! ticket || ws) return;
 
     const url = realtimeUrl();
     const startedAt = performance.now();
-    ws = new WebSocket(`${url}?token=${encodeURIComponent(token)}`);
+    ws = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
 
     ws.onopen = () => {
         reconnectDelay = 1000;
@@ -71,7 +98,7 @@ export function connectRealtime(onMessage) {
 
     ws.onclose = () => {
         ws = null;
-        // 断线重连（3s 起，最长 15s）；token 失效时由 api 拦截器统一跳登录
+        // 断线重连（1s 起，最长 15s）；每次重连都会重新换一张票据
         clearTimeout(reconnectTimer);
         reconnectTimer = setTimeout(() => {
             reconnectDelay = Math.min(reconnectDelay * 2, 15000);
@@ -90,7 +117,7 @@ export async function fetchNotifications(page = 1) {
 
 /** 立刻重连（网络恢复 / 页面重新可见时调用，不等退避计时器） */
 export function reconnectNow() {
-    if (ws || ! localStorage.getItem('ticket_token')) return;
+    if (ws || connecting || ! localStorage.getItem('ticket_token')) return;
     clearTimeout(reconnectTimer);
     reconnectDelay = 1000;
     connectRealtime();

@@ -4,6 +4,7 @@ namespace App\Http\Middleware;
 
 use Closure;
 use Illuminate\Http\Request;
+use Laravel\Sanctum\PersonalAccessToken;
 use Symfony\Component\HttpFoundation\Response;
 
 /** 停用账号：已登录的旧 token 也立刻失效 */
@@ -13,8 +14,11 @@ class EnsureUserIsActive
     {
         $user = $request->user();
         if ($user && ! $user->isActive()) {
-            // 同时清掉当前 token，避免反复请求
-            $user->currentAccessToken()?->delete();
+            // 同时清掉当前 token，避免反复请求；session/测试凭据是 TransientToken，没有 delete()
+            $token = $user->currentAccessToken();
+            if ($token instanceof PersonalAccessToken) {
+                $token->delete();
+            }
             abort(403, '账号已停用，请联系管理员');
         }
 

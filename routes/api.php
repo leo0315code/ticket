@@ -16,6 +16,7 @@ use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketExportController;
 use App\Http\Controllers\Api\WeChatQrController;
+use App\Http\Controllers\Api\WsTicketController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\MetaController;
 use App\Http\Controllers\Api\TicketLogController;
@@ -54,6 +55,9 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
     Route::put('/profile/phone', [LoginMethodController::class, 'bindPhone']);
     Route::post('/profile/wechat/bind', [LoginMethodController::class, 'bindWechat'])->middleware('throttle:10,1');
     Route::delete('/profile/wechat', [LoginMethodController::class, 'unbindWechat']);
+
+    // 连 WebSocket 前换取一次性票据，避免长期 token 出现在 URL 里
+    Route::post('/ws-ticket', [WsTicketController::class, 'store'])->middleware('throttle:30,1');
     Route::post('/logout', [AuthController::class, 'logout']);
 
     // 工单：可见性由 TicketPolicy 控制（客户只看自己的）

@@ -1,6 +1,6 @@
 # 实时消息（WebSocket）连接说明
 
-前端通过 `GatewayWorker` 接收新回复、新通知。浏览器连的是 `window.GATEWAY_WS_URL?token=...`，
+前端通过 `GatewayWorker` 接收新回复、新通知。浏览器连的是 `window.GATEWAY_WS_URL?ticket=...`，
 这个地址来自 `.env` 的 `GATEWAY_PUBLIC_WS_URL`，由 `resources/views/app.blade.php` 注入。
 
 ## 地址怎么决定
@@ -81,7 +81,7 @@ ServBay 的 vhost 文件（`/Applications/ServBay/etc/nginx/vhosts/*.conf`）是
 1. ServBay → 网站 → 新增网站 → 类型选「反向代理」，域名填 `ws.t.test`，目标 `http://127.0.0.1:1238`；
 2. `.env` 里 `GATEWAY_MODE=proxy`、`GATEWAY_PUBLIC_WS_URL=wss://ws.t.test`（不带端口）；
 3. `php artisan gateway:start --restart`；
-4. 浏览器连 `wss://ws.t.test?token=...`，证书由 ServBay 为 `ws.t.test` 签，同一个根证书信任一次即可。
+4. 浏览器连 `wss://ws.t.test?ticket=...`，证书由 ServBay 为 `ws.t.test` 签，同一个根证书信任一次即可。
 
 **做法 2：坚持同源 `/ws`**
 
@@ -96,7 +96,9 @@ ServBay 的 vhost 文件（`/Applications/ServBay/etc/nginx/vhosts/*.conf`）是
 - 浏览器控制台 Network → WS：看握手返回 101 还是 400/502；`[realtime]` 警告里有实际连接的地址
 - 反代没配 `Upgrade`/`Connection` 头时，握手会失败（nginx 返回 400 或直接断开）
 - 同一浏览器多标签页会各建一条连接，属正常
-- 当前 token 走查询参数（`?token=`），会出现在网关访问日志里；后续可改成握手后首帧鉴权
+- 连接凭证是**一次性 ticket**：前端先 `POST /api/ws-ticket`（Bearer 鉴权）拿 48 位随机串，60 秒有效、只能使用一次，
+  网关校验后立即写 `used_at` 作废；长期 Sanctum token 不再出现在 URL / 访问日志里。
+  旧参数 `?token=` 仍被网关接受（兼容老前端），升级完前端后可从 `gateway/Events.php` 删掉该分支。
 
 ## 相关文件
 

@@ -23,8 +23,11 @@ class Events
 
     public static function onWebSocketConnect($client_id, $data)
     {
-        $token = $data['get']['token'] ?? '';
-        $user = self::resolveUser($token);
+        $get = $data['get'] ?? [];
+        // 优先一次性 ticket；token 参数保留兼容老前端（建议升级后移除）
+        $user = ! empty($get['ticket'])
+            ? self::consumeTicket((string) $get['ticket'])
+            : self::resolveUser((string) ($get['token'] ?? ''));
 
         if (! $user) {
             // token 无效 / 已过期 / 账号已停用，统一拒绝，不泄露具体原因
@@ -90,6 +93,51 @@ class Events
 
             return [
                 'id' => (int) $row['uid'],
+                'role' => (string) $row['role'],
+                'is_staff' => self::isStaffRole((string) $row['role']),
+            ];
+        } catch (Throwable $e) {
+            return null;
+        }
+    }
+
+    /**
+     * 校验并作废一次性连接票据（ws_tickets，60 秒有效、只能用一次）
+     * UPDATE 带 used_at IS NULL 条件，天然防并发重放。
+     */
+    private static function consumeTicket(string $ticket): ?array
+    {
+        if ($ticket === '') {
+            return null;
+        }
+
+        try {
+            $hash = hash('sha256', $ticket);
+            $st = self::pdo()->prepare(
+                'UPDATE ws_tickets SET used_at = NOW()
+                  WHERE ticket_hash = ? AND used_at IS NULL AND expires_at > NOW()'
+            );
+            $st->execute([$hash]);
+
+            if ($st->rowCount() !== 1) {
+                return null;
+            }
+
+            $st = self::pdo()->prepare(
+                'SELECT w.user_id, u.role, u.is_active
+                   FROM ws_tickets w
+                   JOIN users u ON u.id = w.user_id
+                  WHERE w.ticket_hash = ?'
+            );
+            $st->execute([$hash]);
+            $row = $st->fetch(PDO::FETCH_ASSOC);
+
+            if (! $row || (int) $row['is_active'] !== 1) {
+                return null;
+            }
+
+            return [
+                'id' => (int) $row['user_id'],
                 'role' => (string) $row['role'],
                 'is_staff' => self::isStaffRole((string) $row['role']),
             ];

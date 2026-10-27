@@ -23,7 +23,7 @@
             <div class="form-side">
                 <el-tabs v-model="tab" stretch>
                     <el-tab-pane label="登录" name="login">
-                        <el-form @submit.prevent="doLogin">
+                        <el-form v-if="mode === 'password'" @submit.prevent="doLogin">
                             <el-form-item>
                                 <el-input v-model="form.account" placeholder="用户名 / 邮箱" size="large" clearable>
                                     <template #prefix><el-icon><User /></el-icon></template>
@@ -34,15 +34,49 @@
                                     <template #prefix><el-icon><Lock /></el-icon></template>
                                 </el-input>
                             </el-form-item>
-                            <div class="forgot">
-                                <el-link type="primary" underline="never" @click="$router.push('/forgot-password')">忘记密码？</el-link>
-                                <el-link type="info" underline="never" @click="$router.push('/help')">帮助中心</el-link>
-                            </div>
                             <el-button type="primary" size="large" class="submit" :loading="loading" @click="doLogin">登 录</el-button>
+                            <div class="tips">
+                                演示账号：xiaoming / xiaohong，密码 <b>password</b><br />
+                                客服与管理员请从后台入口登录
+                            </div>
                         </el-form>
-                        <div class="tips">
-                            演示账号：xiaoming / xiaohong，密码 <b>password</b><br />
-                            客服与管理员请从后台入口登录
+
+                        <el-form v-else-if="mode === 'phone'" @submit.prevent="doPhoneLogin">
+                            <el-form-item>
+                                <el-input v-model="phone.phone" maxlength="11" placeholder="手机号" size="large" clearable>
+                                    <template #prefix><el-icon><Iphone /></el-icon></template>
+                                </el-input>
+                            </el-form-item>
+                            <el-form-item>
+                                <div class="code-row">
+                                    <el-input v-model="phone.code" maxlength="6" placeholder="6 位验证码" size="large">
+                                        <template #prefix><el-icon><Message /></el-icon></template>
+                                    </el-input>
+                                    <el-button size="large" :disabled="countdown > 0 || phoneSending" :loading="phoneSending" @click="sendPhoneCode">
+                                        {{ countdown > 0 ? countdown + 's' : '获取验证码' }}
+                                    </el-button>
+                                </div>
+                            </el-form-item>
+                            <el-button type="primary" size="large" class="submit" :loading="loading" @click="doPhoneLogin">登 录</el-button>
+                            <div class="tips">手机号需先在「账号设置」中绑定</div>
+                        </el-form>
+
+                        <div v-else class="wechat-box">
+                            <el-button type="success" size="large" class="submit" :loading="wechatLoading" @click="doWechatLogin">微信扫码登录</el-button>
+                            <div class="tips">跳转到微信授权页，扫码确认后自动回到这里<br />微信需先在「账号设置」中绑定</div>
+                        </div>
+
+                        <div class="forgot">
+                            <el-link type="primary" underline="never" @click="$router.push('/forgot-password')">忘记密码？</el-link>
+                            <el-link type="info" underline="never" @click="$router.push('/help')">帮助中心</el-link>
+                        </div>
+
+                        <div v-if="site.phone_login_enabled || site.wechat_login_enabled" class="alt-methods">
+                            <span class="alt-label">其他方式</span>
+                            <el-button v-if="site.phone_login_enabled" link type="primary" @click="mode = mode === 'phone' ? 'password' : 'phone'">
+                                {{ mode === 'phone' ? '密码登录' : '手机号验证码' }}
+                            </el-button>
+                            <el-button v-if="site.wechat_login_enabled" link type="success" @click="doWechatLogin">微信扫码</el-button>
                         </div>
                     </el-tab-pane>
 
@@ -78,7 +112,8 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { User, Lock, Postcard, Moon, Sunny } from '@element-plus/icons-vue';
+import { User, Lock, Postcard, Moon, Sunny, Iphone, Message } from '@element-plus/icons-vue';
+import http from '../api';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
 import { homePath } from '../paths';
@@ -88,7 +123,13 @@ const dark = ref(document.documentElement.classList.contains('dark'));
 const tab = ref('login');
 const loading = ref(false);
 const error = ref('');
+const mode = ref('password');
 const form = reactive({ account: '', password: '' });
+const phone = reactive({ phone: '', code: '' });
+const phoneSending = ref(false);
+const countdown = ref(0);
+const wechatLoading = ref(false);
+let countdownTimer = null;
 const reg = reactive({ name: '', username: '', password: '' });
 const auth = useAuthStore();
 const router = useRouter();
@@ -116,6 +157,56 @@ async function doLogin() {
         error.value = e.response?.data?.message || '登录失败';
     } finally {
         loading.value = false;
+    }
+}
+
+async function sendPhoneCode() {
+    if (!/^1[3-9]\d{9}$/.test(phone.phone)) {
+        ElMessage.warning('请输入正确的手机号');
+        return;
+    }
+    phoneSending.value = true;
+    error.value = '';
+    try {
+        await http.post('/auth/phone/code', { phone: phone.phone });
+        ElMessage.success('验证码已发送');
+        countdown.value = 60;
+        clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            countdown.value -= 1;
+            if (countdown.value <= 0) clearInterval(countdownTimer);
+        }, 1000);
+    } catch (e) {
+        error.value = e.response?.data?.message || '验证码发送失败';
+    } finally {
+        phoneSending.value = false;
+    }
+}
+
+async function doPhoneLogin() {
+    loading.value = true;
+    error.value = '';
+    try {
+        await auth.loginWithPhone(phone.phone, phone.code);
+        router.push(redirectTo || homePath());
+    } catch (e) {
+        error.value = e.response?.data?.message || '登录失败';
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function doWechatLogin() {
+    wechatLoading.value = true;
+    error.value = '';
+    try {
+        const { data } = await http.get('/auth/wechat/url');
+        sessionStorage.setItem('wechat_state', data.state);
+        sessionStorage.setItem('wechat_redirect', redirectTo || '');
+        window.location.href = data.url;
+    } catch (e) {
+        error.value = e.response?.data?.message || '微信登录暂不可用';
+        wechatLoading.value = false;
     }
 }
 
@@ -266,5 +357,25 @@ async function doRegister() {
     border-radius: 6px;
     padding: 8px 12px;
     line-height: 1.7;
+}
+.code-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+.code-row .el-input {
+    flex: 1;
+}
+.alt-methods {
+    margin-top: 14px;
+    text-align: center;
+}
+.alt-label {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    margin-right: 6px;
+}
+.wechat-box {
+    padding: 6px 0;
 }
 </style>

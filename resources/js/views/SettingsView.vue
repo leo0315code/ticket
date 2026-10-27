@@ -34,6 +34,52 @@
             </el-form-item>
         </el-form>
 
+        <h4 class="section">登录方式</h4>
+        <el-form label-width="150px" style="max-width: 660px">
+            <el-form-item label="手机号验证码登录">
+                <el-switch v-model="form.phone_login_enabled" />
+                <span class="hint">开启后登录页出现「手机号验证码」入口，用户需先在账号设置里绑定手机号</span>
+            </el-form-item>
+            <el-form-item label="短信通道">
+                <el-select v-model="form.sms_driver" style="width: 180px">
+                    <el-option label="写入日志（联调）" value="log" />
+                    <el-option label="HTTP 网关" value="http" />
+                </el-select>
+                <span class="hint">日志模式验证码写在 storage/logs/laravel.log</span>
+            </el-form-item>
+            <el-form-item v-if="form.sms_driver === 'http'" label="短信网关地址">
+                <el-input v-model="form.sms_http_url" placeholder="https://sms.example.com/send" style="width: 360px" />
+            </el-form-item>
+            <el-form-item label="短信签名">
+                <el-input v-model="form.sms_sign" maxlength="30" style="width: 200px" />
+            </el-form-item>
+            <el-form-item label="验证码有效期">
+                <el-input-number v-model="form.sms_code_ttl" :min="60" :max="1800" :step="30" />
+                <span class="hint">秒</span>
+            </el-form-item>
+
+            <el-form-item label="微信扫码登录">
+                <el-switch v-model="form.wechat_login_enabled" />
+                <span class="hint">需在微信后台把回调地址加入授权回调域</span>
+            </el-form-item>
+            <el-form-item label="微信类型">
+                <el-radio-group v-model="form.wechat_mode">
+                    <el-radio-button value="open">开放平台（网站应用）</el-radio-button>
+                    <el-radio-button value="mp">公众号（网页授权）</el-radio-button>
+                </el-radio-group>
+            </el-form-item>
+            <el-form-item label="AppID">
+                <el-input v-model="form.wechat_app_id" maxlength="100" style="width: 320px" />
+            </el-form-item>
+            <el-form-item label="AppSecret">
+                <el-input v-model="form.wechat_app_secret" placeholder="留空表示不修改" show-password style="width: 320px" />
+                <span v-if="form.wechat_app_secret_set" class="hint">已设置</span>
+            </el-form-item>
+            <el-form-item label="授权回调地址">
+                <el-input :model-value="wechatCallback" readonly />
+            </el-form-item>
+        </el-form>
+
         <h4 class="section">响应时限（SLA）</h4>
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item v-for="p in priorities" :key="p.key" :label="`${p.label}工单`">
@@ -84,7 +130,19 @@ const form = reactive({
     auto_close_days: 7,
     reopen_days: 14,
     reopen_limit: 3,
+    phone_login_enabled: false,
+    sms_driver: 'log',
+    sms_http_url: '',
+    sms_sign: '工单支持中心',
+    sms_code_ttl: 300,
+    wechat_login_enabled: false,
+    wechat_mode: 'open',
+    wechat_app_id: '',
+    wechat_app_secret: '',
+    wechat_app_secret_set: false,
 });
+
+const wechatCallback = `${window.location.origin}/wechat/callback`;
 
 async function load() {
     loading.value = true;

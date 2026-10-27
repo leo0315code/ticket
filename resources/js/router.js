@@ -42,6 +42,7 @@ const routes = [
     },
 
     // 公开页面（无需登录，也不因已登录而跳走）
+    { path: '/wechat/callback', component: () => import('./views/WeChatCallbackView.vue'), meta: { public: true } },
     { path: '/help', component: () => import('./views/HelpCenterView.vue'), meta: { public: true } },
     { path: '/forgot-password', component: () => import('./views/ForgotPasswordView.vue'), meta: { public: true } },
     { path: '/reset-password', component: () => import('./views/ResetPasswordView.vue'), meta: { public: true } },

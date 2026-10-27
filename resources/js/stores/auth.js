@@ -33,6 +33,35 @@ export const useAuthStore = defineStore('auth', {
             const { data } = await http.post('/login', { account, password });
             this.save(data.token, data.user);
         },
+        async loginWithPhone(phone, code) {
+            const { data } = await http.post('/auth/phone/login', { phone, code });
+            this.save(data.token, data.user);
+        },
+        async loginWithWechat(code, state) {
+            const { data } = await http.post('/auth/wechat/login', { code, state });
+            this.save(data.token, data.user);
+        },
+        async sendBindPhoneCode(phone) {
+            const { data } = await http.post('/profile/phone/code', { phone });
+            return data;
+        },
+        async bindPhone(phone, code) {
+            const { data } = await http.put('/profile/phone', { phone, code });
+            this.user = data.user;
+            localStorage.setItem('ticket_user', JSON.stringify(data.user));
+            return data.user;
+        },
+        async bindWechat(code, state) {
+            const { data } = await http.post('/profile/wechat/bind', { code, state });
+            this.user = data.user;
+            localStorage.setItem('ticket_user', JSON.stringify(data.user));
+            return data.user;
+        },
+        async unbindWechat() {
+            await http.delete('/profile/wechat');
+            this.user = { ...this.user, has_wechat: false, wechat_nickname: null };
+            localStorage.setItem('ticket_user', JSON.stringify(this.user));
+        },
         async register(name, username, password) {
             const { data } = await http.post('/register', { name, username, password });
             this.save(data.token, data.user);

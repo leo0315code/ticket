@@ -872,12 +872,17 @@ faqs                                -- 直接扩，不建 kb_articles
 - **用户管理升级（v2.19）**：搜索（姓名/账号/邮箱）+ 角色筛选 + 启用状态筛选 + 分页 + 最后登录时间；新增「编辑账号」（改姓名/邮箱/角色/启停用）与「停用账号」——停用即踢掉全部登录、再登录返回 403；保留「重置密码」。
 - **公开帮助中心（v2.23）**：`/help` 无需登录即可搜索、按分类浏览、展开阅读、点赞/点踩，只返回 `is_public` 条目；`/api/faqs`、`view`、`feedback` 移到公开路由并限流（可选登录：带 token 的客服仍能看到全部条目）；登录页与移动端帮助中心共用同一份内容；底部“没找到答案 → 登录后提交工单”。
 - **自助找回密码（v2.23）**：登录页「忘记密码？」→ 输入用户名或邮箱 → 若账号绑定邮箱则发送重置链接（`/reset-password?token=…` 前端页面，链接由 `ResetPassword::createUrlUsing` 生成）；重置成功后踢掉该账号全部登录 token；未绑定邮箱的账号提示联系管理员；对不存在的账号返回同一句话防枚举。手机号/公众号验证留作后续扩展（`users.phone` 字段已存在）。
+- **多方式登录（v2.24）**：新增「手机号验证码登录」与「微信公众号扫码登录」，与密码登录并存，登录页按后台开关显示入口。
+  - 手机号：`POST /api/auth/phone/code` 发送 6 位验证码（缓存存哈希，5 次错误作废，60 秒重发冷却、每日 10 条上限），`POST /api/auth/phone/login` 换 token；短信通道可配为「写日志（联调）」或「HTTP 网关」（POST `{phone, code, content, purpose}`）。
+  - 微信：`GET /api/auth/wechat/url` 返回授权地址（开放平台 `qrconnect` 或公众号 `oauth2/authorize`，state 用 HMAC 防 CSRF，10 分钟有效），`POST /api/auth/wechat/login` 用 code 换 openid 后登录；`/wechat/callback` 是前端回调页，登录/绑定共用。
+  - 绑定：移动端「我的 → 账号设置」可绑定/更换手机号、扫码绑定/解绑微信；`users` 增加 `wechat_openid/wechat_unionid/wechat_nickname/wechat_avatar`。
+  - 安全：不存在/未绑定的手机号与微信统一返回「未绑定」提示，不泄露账号是否存在；停用账号在任一登录方式下都 403；AppSecret 接口只回显“是否已设置”，留空保存不会覆盖。
 
 ### 13.4 验证
 
-- `php artisan test`：**120 passed / 518 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条）。
+- `php artisan test`：**134 passed / 562 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条、`LoginMethodTest` 14 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
-- 新增迁移 9 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
+- 新增迁移 10 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 - 权限约定：接口用 `permission:key` 中间件，前端用 `auth.can('key')`；新增敏感接口时两处都要加。
 
 ### 13.5 仍建议后续
@@ -912,8 +917,31 @@ faqs                                -- 直接扩，不建 kb_articles
 | 统计 | 只有团队维度，无个人绩效、无导出、无响应时长分布 |
 | 权限审计 | 角色/用户权限变更没有留痕（`ticket_logs` 只记工单动作） |
 
+> 说明：上表中的「找回密码」「公开帮助中心」已于 v2.23 修复，其余项仍未做。
+
 **C. 明确搁置（此前决定不做）**
 
 邮件入站（IMAP）、触发器/自动分配、Webhook/API Token、2FA、多语言、多租户、产品内 widget；
 前端无单元测试、无 CI（无 `.github`）、无 Pint/PHPStan 配置；
 WebSocket 仍是直连 `wss://host:1238`（反代方案因 ServBay vhost 自动生成而暂缓，token 仍在 URL）。
+
+### 13.7 登录方式配置（v2.24）
+
+后台「系统设置 → 登录方式」可配置，全部落库，保存即生效，无需改 `.env`：
+
+| 配置项 | 说明 |
+| --- | --- |
+| 手机号验证码登录 | 总开关；关闭后 `/api/auth/phone/*` 返回 403，登录页不显示入口 |
+| 短信通道 | `log`：验证码写到 `storage/logs/laravel.log`（联调用）；`http`：POST 到你的短信网关 |
+| 短信网关地址 | 仅 `http` 模式使用；请求体 `{phone, code, content, purpose}`，返回 2xx 视为成功 |
+| 短信签名 | 用于短信正文前缀【签名】 |
+| 验证码有效期 | 60–1800 秒，默认 300 |
+| 微信扫码登录 | 总开关，且 AppID/AppSecret 都填了才真正可用 |
+| 微信类型 | `open`=开放平台网站应用（PC 扫码）；`mp`=公众号网页授权（微信内浏览器） |
+| AppID / AppSecret | 微信后台获取；AppSecret 保存后不再回显，留空保存表示不修改 |
+| 授权回调地址 | 页面显示 `https://你的域名/wechat/callback`，需在微信后台加入「授权回调域」 |
+
+联调步骤：
+1. 手机号：开启开关 → 选择日志通道 → 登录页输入手机号获取验证码 → `tail -f storage/logs/laravel.log` 查看 6 位码。上线前把通道改成 `http` 并填自己的短信网关。
+2. 微信：开放平台创建「网站应用」→ 填 AppID/AppSecret → 回调域填站点域名 → 手机/微信绑定后即可扫码登录。
+3. 用户必须先绑定手机号/微信才能用对应方式登录，不支持直接注册，避免绕过注册开关。

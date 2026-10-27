@@ -32,6 +32,35 @@
                     <el-input v-model="profileForm.email" placeholder="用于接收工单邮件通知" />
                 </el-form-item>
             </el-form>
+
+            <el-divider content-position="left">登录方式</el-divider>
+
+            <el-form label-position="top">
+                <el-form-item label="手机号（验证码登录）">
+                    <div class="bind-value">{{ auth.user?.phone || '未绑定' }}</div>
+                    <div class="code-row">
+                        <el-input v-model="phoneForm.phone" maxlength="11" placeholder="输入手机号" />
+                        <el-button :disabled="countdown > 0 || sendingCode" :loading="sendingCode" @click="sendCode">
+                            {{ countdown > 0 ? countdown + 's' : '获取验证码' }}
+                        </el-button>
+                    </div>
+                    <div class="code-row" style="margin-top: 8px">
+                        <el-input v-model="phoneForm.code" maxlength="6" placeholder="6 位验证码" />
+                        <el-button type="primary" :loading="bindingPhone" @click="bindPhone">
+                            {{ auth.user?.phone ? '更换' : '绑定' }}
+                        </el-button>
+                    </div>
+                </el-form-item>
+
+                <el-form-item label="微信（扫码登录）">
+                    <div v-if="auth.user?.has_wechat" class="bind-value">
+                        已绑定 {{ auth.user?.wechat_nickname || '' }}
+                        <el-button link type="danger" @click="unbindWechat">解绑</el-button>
+                    </div>
+                    <el-button v-else type="success" plain @click="bindWechat">微信扫码绑定</el-button>
+                </el-form-item>
+            </el-form>
+            <div class="dialog-tip">绑定手机号/微信后，可用「验证码登录」「扫码登录」；未绑定时仍可用密码登录。</div>
             <div class="dialog-tip">不填邮箱不影响使用，所有通知都会通过站内消息送达。</div>
             <template #footer>
                 <el-button @click="settingsVisible = false">取消</el-button>
@@ -56,6 +85,11 @@ const stats = ref([{ label: '全部', value: '–' }]);
 const settingsVisible = ref(false);
 const saving = ref(false);
 const profileForm = reactive({ name: '', email: '' });
+const phoneForm = reactive({ phone: '', code: '' });
+const sendingCode = ref(false);
+const bindingPhone = ref(false);
+const countdown = ref(0);
+let countdownTimer = null;
 
 async function load() {
     const { data } = await http.get('/stats/mine');
@@ -69,6 +103,61 @@ function openSettings() {
     profileForm.name = auth.user?.name || '';
     profileForm.email = auth.user?.email || '';
     settingsVisible.value = true;
+}
+
+async function sendCode() {
+    if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) {
+        ElMessage.warning('请输入正确的手机号');
+        return;
+    }
+    sendingCode.value = true;
+    try {
+        await auth.sendBindPhoneCode(phoneForm.phone);
+        ElMessage.success('验证码已发送');
+        countdown.value = 60;
+        clearInterval(countdownTimer);
+        countdownTimer = setInterval(() => {
+            countdown.value -= 1;
+            if (countdown.value <= 0) clearInterval(countdownTimer);
+        }, 1000);
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '验证码发送失败');
+    } finally {
+        sendingCode.value = false;
+    }
+}
+
+async function bindPhone() {
+    bindingPhone.value = true;
+    try {
+        await auth.bindPhone(phoneForm.phone, phoneForm.code);
+        ElMessage.success('手机号已绑定');
+        phoneForm.code = '';
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '绑定失败');
+    } finally {
+        bindingPhone.value = false;
+    }
+}
+
+async function unbindWechat() {
+    try {
+        await auth.unbindWechat();
+        ElMessage.success('微信已解绑');
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '解绑失败');
+    }
+}
+
+async function bindWechat() {
+    try {
+        const { data } = await http.get('/auth/wechat/url');
+        sessionStorage.setItem('wechat_state', data.state);
+        sessionStorage.setItem('wechat_bind', '1');
+        window.location.href = data.url;
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '微信登录未启用');
+    }
 }
 
 async function saveSettings() {
@@ -156,5 +245,18 @@ onMounted(load);
 .stat span {
     font-size: 11px;
     color: var(--el-text-color-secondary);
+}
+.bind-value {
+    font-size: 13px;
+    color: var(--el-text-color-regular);
+    margin-bottom: 6px;
+}
+.code-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+}
+.code-row .el-input {
+    flex: 1;
 }
 </style>

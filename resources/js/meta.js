@@ -1,7 +1,7 @@
 import http from './api';
 
 // 公开的站点元信息（站点名称、注册开关、附件上限）：未登录也要能拿到
-const FALLBACK = { site_name: '工单支持中心', allow_register: true, attach_max_mb: 10 };
+const FALLBACK = { site_name: '工单支持中心', allow_register: true, attach_max_mb: 10, phone_login_enabled: false, wechat_login_enabled: false };
 
 let cache = null;
 let pending = null;

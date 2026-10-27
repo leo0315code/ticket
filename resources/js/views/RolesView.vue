@@ -23,6 +23,13 @@
                     <span v-else>{{ row.permission_count }} 项</span>
                 </template>
             </el-table-column>
+            <el-table-column label="数据范围" width="120">
+                <template #default="{ row }">
+                    <el-tag size="small" :type="row.ticket_scope === 'all' ? 'success' : 'warning'">
+                        {{ row.ticket_scope_label || '全部工单' }}
+                    </el-tag>
+                </template>
+            </el-table-column>
             <el-table-column prop="users_count" label="用户数" width="90" align="center" />
             <el-table-column label="类型" width="100">
                 <template #default="{ row }">
@@ -49,6 +56,17 @@
                 </el-form-item>
                 <el-form-item label="名称" required>
                     <el-input v-model="form.label" maxlength="30" placeholder="显示给人看的名字，如：售后客服" />
+                </el-form-item>
+                <el-form-item label="数据范围">
+                    <el-radio-group v-model="form.ticket_scope">
+                        <el-radio-button value="all">全部工单</el-radio-button>
+                        <el-radio-button value="assigned">仅我受理的</el-radio-button>
+                        <el-radio-button value="own">仅我提交的</el-radio-button>
+                    </el-radio-group>
+                    <div class="muted">
+                        控制这个角色能看到哪些工单：列表、详情、回复、导出都按此过滤。<br />
+                        选「全部工单」需同时勾选工单组的「查看全部工单」，否则自动按「仅我受理的」处理。
+                    </div>
                 </el-form-item>
                 <el-form-item label="权限">
                     <div class="perm-groups">
@@ -85,7 +103,7 @@ const loading = ref(true);
 const dialog = ref(false);
 const saving = ref(false);
 
-const form = reactive({ id: null, name: '', label: '', permissions: [] });
+const form = reactive({ id: null, name: '', label: '', permissions: [], ticket_scope: 'all' });
 
 async function load() {
     loading.value = true;
@@ -99,12 +117,18 @@ async function load() {
 }
 
 function openCreate() {
-    Object.assign(form, { id: null, name: '', label: '', permissions: ['panel.access'] });
+    Object.assign(form, { id: null, name: '', label: '', permissions: ['panel.access'], ticket_scope: 'all' });
     dialog.value = true;
 }
 
 function openEdit(row) {
-    Object.assign(form, { id: row.id, name: row.name, label: row.label, permissions: [...(row.permissions || [])] });
+    Object.assign(form, {
+        id: row.id,
+        name: row.name,
+        label: row.label,
+        permissions: [...(row.permissions || [])],
+        ticket_scope: row.ticket_scope || 'all',
+    });
     dialog.value = true;
 }
 
@@ -116,9 +140,9 @@ async function save() {
     saving.value = true;
     try {
         if (form.id) {
-            await http.put(`/roles/${form.id}`, { label: form.label, permissions: form.permissions });
+            await http.put(`/roles/${form.id}`, { label: form.label, permissions: form.permissions, ticket_scope: form.ticket_scope });
         } else {
-            await http.post('/roles', { name: form.name, label: form.label, permissions: form.permissions });
+            await http.post('/roles', { name: form.name, label: form.label, permissions: form.permissions, ticket_scope: form.ticket_scope });
         }
         dialog.value = false;
         ElMessage.success('已保存');
@@ -156,6 +180,11 @@ onMounted(load);
     color: var(--el-text-color-secondary);
     font-size: 13px;
     line-height: 1.7;
+}
+.muted {
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    margin-left: 12px;
 }
 .perm-groups {
     width: 100%;

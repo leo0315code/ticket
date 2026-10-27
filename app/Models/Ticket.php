@@ -145,6 +145,20 @@ class Ticket extends Model
     }
 
     /** @param Builder<static> $query */
+    /** 数据范围：普通用户只看自己的；客服按角色范围（全部 / 仅我受理 / 仅我提交） */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if (! $user->isStaff()) {
+            return $query->where('user_id', $user->id);
+        }
+
+        return match ($user->ticketScope()) {
+            'assigned' => $query->where('agent_id', $user->id),
+            'own' => $query->where('user_id', $user->id),
+            default => $query,
+        };
+    }
+
     public function scopeFilter(Builder $query, array $filters): void
     {
         $query

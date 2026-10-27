@@ -19,6 +19,7 @@ class UserResource extends JsonResource
             'role' => $this->whenNotNull($this->role),
             'role_label' => Role::allCached()[$this->role]->label ?? $this->role,
             'permissions' => $this->permissions(),
+            'ticket_scope' => $this->isStaff() ? $this->ticketScope() : null,
             'is_active' => $this->isActive(),
             'last_login_at' => $this->last_login_at?->format('Y-m-d H:i'),
             'tickets_count' => $this->whenCounted('tickets'),

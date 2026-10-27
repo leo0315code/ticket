@@ -25,6 +25,15 @@
             </div>
         </template>
 
+        <el-alert
+            v-if="scopeHint"
+            :title="scopeHint"
+            type="info"
+            :closable="false"
+            show-icon
+            class="scope-hint"
+        />
+
         <div class="filter-bar">
             <el-button v-if="isMobile" size="small" @click="showFilters = ! showFilters">
                 筛选{{ hasActiveFilters ? ' ●' : '' }}
@@ -139,6 +148,14 @@ import { adminPath } from '../paths';
 import { STATUS_MAP, PRIORITY_MAP } from '../constants';
 
 const auth = useAuthStore();
+// 角色的数据范围有限制时给个说明，避免客服以为“工单丢了”
+const scopeHint = computed(() => {
+    if (! auth.isStaff) return '';
+    const scope = auth.user?.ticket_scope;
+    if (scope === 'assigned') return '当前角色只能看到指派给你的工单；未指派的工单需要管理员分配后再处理。';
+    if (scope === 'own') return '当前角色只能看到你自己提交的工单。';
+    return '';
+});
 const tickets = ref([]);
 const categories = ref([]);
 const total = ref(0);

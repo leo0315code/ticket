@@ -39,6 +39,32 @@ class User extends Authenticatable
         return $this->permissionCache;
     }
 
+    /** 工单数据范围：all / assigned / own（由角色决定）
+     *  「全部工单」需要同时拥有 ticket.view_all，否则按「仅我受理的」降级，避免误开放全量数据。 */
+    public function ticketScope(): string
+    {
+        $scope = Role::scopeFor($this->role);
+
+        if ($scope === 'all' && ! $this->hasPermission('ticket.view_all')) {
+            return 'assigned';
+        }
+
+        return $scope;
+    }
+
+    public function canSeeTicket(\App\Models\Ticket $ticket): bool
+    {
+        if (! $this->isStaff()) {
+            return $ticket->user_id === $this->id;
+        }
+
+        return match ($this->ticketScope()) {
+            'assigned' => $ticket->agent_id === $this->id,
+            'own' => $ticket->user_id === $this->id,
+            default => true,
+        };
+    }
+
     public function hasPermission(string $permission): bool
     {
         $permissions = $this->permissions();

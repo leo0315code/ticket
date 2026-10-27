@@ -36,6 +36,7 @@ class RoleController extends Controller
             'label' => ['required', 'string', 'max:30'],
             'permissions' => ['present', 'array'],
             'permissions.*' => ['string', Rule::in(Permissions::keys())],
+            'ticket_scope' => ['sometimes', Rule::in(array_keys(Role::SCOPES))],
         ], [
             'name.regex' => '角色标识只能用小写字母开头，含字母、数字、下划线',
         ]);
@@ -55,6 +56,7 @@ class RoleController extends Controller
             'label' => ['required', 'string', 'max:30'],
             'permissions' => ['present', 'array'],
             'permissions.*' => ['string', Rule::in(Permissions::keys())],
+            'ticket_scope' => ['sometimes', Rule::in(array_keys(Role::SCOPES))],
         ]);
 
         $role->update($data);
@@ -83,6 +85,8 @@ class RoleController extends Controller
             'name' => $role->name,
             'label' => $role->label,
             'permissions' => $role->permissions,
+            'ticket_scope' => $role->ticket_scope ?: 'all',
+            'ticket_scope_label' => Role::SCOPES[$role->ticket_scope ?: 'all'],
             'is_system' => $role->is_system,
             'permission_count' => $role->permissionCount(),
             'users_count' => $role->users_count ?? $role->users()->count(),

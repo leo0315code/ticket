@@ -15,13 +15,10 @@ class TicketExportController extends Controller
         $filename = '工单导出-'.now()->format('Ymd-His').'.csv';
 
         $query = Ticket::query()
+            ->visibleTo($request->user())
             ->with(['user:id,name', 'agent:id,name', 'category:id,name'])
             ->withCount('replies')
             ->latest();
-
-        if (! $request->user()->isStaff()) {
-            $query->where('user_id', $request->user()->id);
-        }
 
         $query->filter($request->only(['status', 'priority', 'category_id', 'keyword', 'mine', 'overdue']));
 

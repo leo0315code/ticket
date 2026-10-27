@@ -19,13 +19,10 @@ class TicketController extends Controller
     public function index(Request $request): AnonymousResourceCollection
     {
         $query = Ticket::query()
+            ->visibleTo($request->user())
             ->with(['user:id,name', 'agent:id,name', 'category:id,name'])
             ->withCount('replies')
             ->latest();
-
-        if (! $request->user()->isStaff()) {
-            $query->where('user_id', $request->user()->id);
-        }
 
         // mine 前端只传 1，后端换算为当前用户 id（只看我受理的）
         $filters = $request->only(['status', 'priority', 'category_id', 'keyword', 'mine', 'overdue']);

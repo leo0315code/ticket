@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Api;
 
+use App\Models\Role;
 use App\Models\User;
 use App\Support\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,8 @@ abstract class ApiTestCase extends TestCase
         parent::setUp();
         // 设置是进程内静态缓存，测试之间必须清掉
         Settings::flush();
+        // 角色/权限也是进程内静态缓存，RefreshDatabase 重跑迁移不会触发模型事件
+        Role::flushCache();
     }
 
     protected function makeUser(string $role = 'user', array $attrs = []): User

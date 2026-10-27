@@ -138,12 +138,8 @@ const hasEarlier = computed(() =>
     ticket.value && (ticket.value.replies_count ?? 0) > displayReplies.value.length,
 );
 
-const canReopen = computed(() =>
-    auth.user && ticket.value
-    && ticket.value.user?.id === auth.user.id
-    && ticket.value.status === 'closed'
-    && (ticket.value.reopen_count || 0) < 3,
-);
+// 能不能重开由后端算（受后台设置的重开窗口/次数限制），前端只读结果
+const canReopen = computed(() => !!ticket.value?.can_reopen);
 
 const canRate = computed(() =>
     auth.user && ticket.value

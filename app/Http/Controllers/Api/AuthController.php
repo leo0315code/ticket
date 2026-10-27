@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Support\Settings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,10 @@ class AuthController extends Controller
 {
     public function register(Request $request): JsonResponse
     {
+        if (! Settings::get('allow_register', true)) {
+            return response()->json(['message' => '注册已关闭，请联系管理员开通账号'], 403);
+        }
+
         $data = $request->validate([
             'name' => ['required', 'string', 'max:50'],
             // 账号：2-30 位中文、字母、数字、下划线

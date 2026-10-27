@@ -31,6 +31,7 @@ class TicketResource extends JsonResource
             'first_response_at' => $this->first_response_at?->format('Y-m-d H:i'),
             'closed_reason' => $this->closed_reason,
             'reopen_count' => (int) ($this->reopen_count ?? 0),
+            'can_reopen' => $this->canBeReopenedBy($request->user()),
             'last_activity_at' => $this->last_activity_at?->format('Y-m-d H:i'),
             'overdue' => $this->isOverdue(),
             'created_at' => $this->created_at->format('Y-m-d H:i'),

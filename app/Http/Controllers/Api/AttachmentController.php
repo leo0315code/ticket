@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Attachment;
 use App\Models\Ticket;
+use App\Support\Settings;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -15,9 +16,10 @@ class AttachmentController extends Controller
     {
         $this->authorize('view', $ticket);
 
+        // 上限由后台「系统设置 → 附件大小」控制（KB）
+        $maxKb = max(1, (int) Settings::get('attach_max_mb', 10)) * 1024;
         $data = $request->validate([
-            // 类型白名单 + 最大 10MB
-            'file' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,gif,webp,bmp,pdf,doc,docx,xls,xlsx,csv,txt,zip,rar,7z'],
+            'file' => ['required', 'file', "max:{$maxKb}", 'mimes:jpg,jpeg,png,gif,webp,bmp,pdf,doc,docx,xls,xlsx,csv,txt,zip,rar,7z'],
         ]);
 
         $file = $data['file'];

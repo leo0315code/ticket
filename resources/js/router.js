@@ -21,6 +21,7 @@ const routes = [
             { path: 'users', component: () => import('./views/UsersView.vue'), meta: { admin: true } },
             { path: 'faqs', component: () => import('./views/FaqView.vue') },
             { path: 'logs', component: () => import('./views/LogsView.vue'), meta: { staff: true } },
+            { path: 'settings', component: () => import('./views/SettingsView.vue'), meta: { admin: true } },
             { path: '', redirect: 'tickets' },
         ],
     },

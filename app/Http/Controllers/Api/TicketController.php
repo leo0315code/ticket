@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\TicketResource;
 use App\Models\Ticket;
+use App\Support\Settings;
 use App\Models\User;
 use App\Notifications\TicketEventNotification;
 use Illuminate\Http\JsonResponse;
@@ -53,7 +54,7 @@ class TicketController extends Controller
             ...$data,
             'no' => Ticket::nextNo(),
             'status' => 'open',
-            'sla_due_at' => now()->addHours(Ticket::SLA_HOURS[$data['priority']] ?? 24),
+            'sla_due_at' => now()->addHours(Ticket::slaHours($data['priority'])),
             'last_activity_at' => now(),
         ]), 30);
         $ticket->log('created', $request->user()->id, "创建工单【{$ticket->title}】");
@@ -121,7 +122,7 @@ class TicketController extends Controller
             // 优先级变化后按新优先级重算响应时限（以创建时间为基准，不因改优先级而白送时限）
             if (isset($data['priority']) && $data['priority'] !== $ticket->priority) {
                 $data['sla_due_at'] = $ticket->created_at->copy()
-                    ->addHours(Ticket::SLA_HOURS[$data['priority']] ?? 24);
+                    ->addHours(Ticket::slaHours($data['priority']));
             }
             $data['last_activity_at'] = now();
         } else {
@@ -259,11 +260,13 @@ class TicketController extends Controller
         if ($ticket->status !== 'closed') {
             return response()->json(['message' => '只有已关闭的工单可以重新打开'], 422);
         }
-        if ($ticket->closed_at && $ticket->closed_at->lt(now()->subDays(14))) {
-            return response()->json(['message' => '工单关闭已超过 14 天，请新建工单'], 422);
+        $days = (int) Settings::get('reopen_days', 14);
+        $limit = (int) Settings::get('reopen_limit', 3);
+        if ($ticket->closed_at && $ticket->closed_at->lt(now()->subDays($days))) {
+            return response()->json(['message' => "工单关闭已超过 {$days} 天，请新建工单"], 422);
         }
-        if ((int) $ticket->reopen_count >= 3) {
-            return response()->json(['message' => '该工单已重开 3 次，请新建工单'], 422);
+        if ((int) $ticket->reopen_count >= $limit) {
+            return response()->json(['message' => "该工单已重开 {$limit} 次，请新建工单"], 422);
         }
 
         $ticket->update([

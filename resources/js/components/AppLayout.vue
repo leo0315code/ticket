@@ -25,6 +25,9 @@
                 <el-menu-item v-if="auth.isAdmin" :index="adminPath('users')">
                     <el-icon><User /></el-icon><span>用户管理</span>
                 </el-menu-item>
+                <el-menu-item v-if="auth.isAdmin" :index="adminPath('settings')">
+                    <el-icon><Setting /></el-icon><span>系统设置</span>
+                </el-menu-item>
             </el-menu>
         </el-aside>
 
@@ -80,7 +83,7 @@
 import { computed, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
-import { ArrowDown, Moon, Sunny, Tickets, EditPen, Collection, DataLine, Files, User, List } from '@element-plus/icons-vue';
+import { ArrowDown, Moon, Sunny, Tickets, EditPen, Collection, DataLine, Files, User, List, Setting } from '@element-plus/icons-vue';
 import NotificationBell from './NotificationBell.vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
@@ -101,6 +104,7 @@ const LABELS = [
     [adminPath('logs'), '操作审计'],
     [adminPath('categories'), '分类管理'],
     [adminPath('users'), '用户管理'],
+    [adminPath('settings'), '系统设置'],
 ];
 const currentLabel = computed(() => {
     const hit = LABELS.find(([p]) => isActive(p));

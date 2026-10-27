@@ -23,21 +23,27 @@
         </div>
         <p v-if="ticket.attachments?.length === 0" style="color: #909399; margin: 0 0 8px">暂无附件</p>
         <el-upload :show-file-list="false" :http-request="upload" multiple>
-            <el-button size="small" :loading="uploading">上传附件（≤10MB）</el-button>
+            <el-button size="small" :loading="uploading">上传附件（≤{{ maxMb }}MB）</el-button>
         </el-upload>
     </el-card>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { Document } from '@element-plus/icons-vue';
 import http from '../../api';
+import { loadMeta, meta } from '../../meta';
 
 const props = defineProps({ ticket: { type: Object, required: true } });
 const emit = defineEmits(['change']);
 
 const uploading = ref(false);
+const maxMb = ref(meta().attach_max_mb);
+
+onMounted(async () => {
+    maxMb.value = (await loadMeta()).attach_max_mb;
+});
 
 // 图片附件（缩略图墙）；其余文件走列表
 const images = computed(() => (props.ticket.attachments || []).filter((a) => (a.mime || '').startsWith('image/')));

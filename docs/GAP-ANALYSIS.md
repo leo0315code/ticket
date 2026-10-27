@@ -864,12 +864,13 @@ faqs                                -- 直接扩，不建 kb_articles
 - 客服绩效从「每坐席 N 次查询」改为两次聚合查询。
 - 邮件通知的工单链接经 `/tickets/{id}` 统一分流到移动端或后台。
 - **邮箱改为纯选填**：注册表单不再要求邮箱；移动端「我的 → 账号设置」可随时绑定/解绑；没有邮箱的用户跳过邮件通道（只发站内信与实时推送），避免队列任务发往空地址失败。
+- **系统设置页（v2.18）**：`settings` 表 + `/panel/settings`，可配站点名称、开放注册、邮件通知开关、附件上限、四档 SLA、待确认自动关闭天数、重开窗口与次数；SLA/自动关闭/重开/附件/注册/邮件均改为读设置，不再写死在代码里。
 
 ### 13.4 验证
 
-- `php artisan test`：**74 passed / 328 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条）。
+- `php artisan test`：**83 passed / 373 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
-- 新增迁移 4 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
+- 新增迁移 5 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 
 ### 13.5 仍建议后续
 

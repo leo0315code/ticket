@@ -9,7 +9,7 @@
             <!-- 左侧品牌区 -->
             <div class="brand-side">
                 <div class="brand-logo">🎫</div>
-                <h1>工单系统</h1>
+                <h1>{{ site.site_name }}</h1>
                 <p class="slogan">问题提交 · 快速响应 · 全程可追踪</p>
                 <ul class="features">
                     <li>⚡ SLA 时限保障，超时自动提醒客服</li>
@@ -42,7 +42,7 @@
                         </div>
                     </el-tab-pane>
 
-                    <el-tab-pane label="注册" name="register">
+                    <el-tab-pane v-if="site.allow_register" label="注册" name="register">
                         <el-form @submit.prevent="doRegister">
                             <el-form-item>
                                 <el-input v-model="reg.name" placeholder="昵称" size="large">
@@ -71,13 +71,14 @@
 </template>
 
 <script setup>
-import { reactive, ref } from 'vue';
+import { onMounted, reactive, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { User, Lock, Postcard, Moon, Sunny } from '@element-plus/icons-vue';
 import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
 import { homePath } from '../paths';
+import { loadMeta, meta } from '../meta';
 
 const dark = ref(document.documentElement.classList.contains('dark'));
 const tab = ref('login');
@@ -89,6 +90,10 @@ const auth = useAuthStore();
 const router = useRouter();
 const route = useRoute();
 const redirectTo = typeof route.query.redirect === 'string' ? route.query.redirect : '';
+// 站点信息（注册开关）决定是否展示注册入口
+const site = reactive({ ...meta() });
+
+onMounted(async () => Object.assign(site, await loadMeta()));
 
 async function doLogin() {
     loading.value = true;

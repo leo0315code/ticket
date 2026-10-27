@@ -3,6 +3,7 @@
 namespace App\Notifications;
 
 use App\Models\Ticket;
+use App\Support\Settings;
 use App\Notifications\Channels\GatewayChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -28,7 +29,7 @@ class TicketEventNotification extends Notification implements ShouldQueue
         $channels = ['database'];
 
         // 邮箱是选填项：没绑邮箱就没有邮件通道，避免队列任务发往空地址失败
-        if (filled($notifiable->email ?? null)) {
+        if (filled($notifiable->email ?? null) && Settings::get('notify_mail', true)) {
             $channels[] = 'mail';
         }
 

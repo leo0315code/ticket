@@ -13,6 +13,8 @@ use App\Http\Controllers\Api\ReplyController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketExportController;
+use App\Http\Controllers\Api\SettingsController;
+use App\Http\Controllers\Api\MetaController;
 use App\Http\Controllers\Api\TicketLogController;
 use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
@@ -23,6 +25,7 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10
 Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('throttle:10,1');
 Route::get('/captcha/issue', [CaptchaController::class, 'issue'])->middleware('throttle:30,1');
 Route::post('/captcha/verify', [CaptchaController::class, 'verify'])->middleware('throttle:30,1');
+Route::get('/meta', [MetaController::class, 'show'])->middleware('throttle:120,1');
 
 Route::middleware(['auth:sanctum', 'throttle:240,1'])->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
@@ -66,6 +69,8 @@ Route::middleware(['auth:sanctum', 'throttle:240,1'])->group(function () {
         Route::post('/users', [UserController::class, 'store']);
         Route::put('/users/{user}', [UserController::class, 'update']);
         Route::put('/users/{user}/reset-password', [UserController::class, 'resetPassword']);
+        Route::get('/settings', [SettingsController::class, 'index']);
+        Route::put('/settings', [SettingsController::class, 'update']);
         Route::post('/faqs', [FaqController::class, 'store']);
         Route::put('/faqs/{faq}', [FaqController::class, 'update']);
         Route::delete('/faqs/{faq}', [FaqController::class, 'destroy']);

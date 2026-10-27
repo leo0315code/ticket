@@ -101,6 +101,9 @@ import { CircleCloseFilled } from '@element-plus/icons-vue';
 import http from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import { avatarColor } from '../../utils/avatar';
+import { loadMeta, meta } from '../../meta';
+
+const maxMb = ref(meta().attach_max_mb);
 
 const props = defineProps({ ticketId: { type: [Number, String], required: true } });
 const emit = defineEmits(['sent']);
@@ -228,8 +231,8 @@ function pickMention(u) {
 }
 
 function addFile(file) {
-    if (file.size > 10 * 1024 * 1024) {
-        ElMessage.warning(`「${file.name}」超过 10MB，未添加`);
+    if (file.size > maxMb.value * 1024 * 1024) {
+        ElMessage.warning(`「${file.name}」超过 ${maxMb.value}MB，未添加`);
         return;
     }
     if (files.value.length >= 3) {
@@ -282,9 +285,10 @@ async function send() {
     }
 }
 
-onMounted(() => {
+onMounted(async () => {
     nextTick(() => textarea()?.addEventListener('keydown', onKeydown));
     loadCanned();
+    maxMb.value = (await loadMeta()).attach_max_mb;
 });
 </script>
 

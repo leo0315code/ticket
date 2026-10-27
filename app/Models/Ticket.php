@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Support\Settings;
+
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -37,6 +39,14 @@ class Ticket extends Model
         'low' => 72,
     ];
 
+    /** 按优先级取首次响应时限（后台「系统设置」可改，默认见 SLA_HOURS） */
+    public static function slaHours(string $priority): int
+    {
+        $hours = Settings::get('sla_hours', self::SLA_HOURS);
+
+        return (int) ($hours[$priority] ?? self::SLA_HOURS[$priority] ?? 24);
+    }
+
     protected $fillable = [
         'no', 'title', 'content', 'status', 'priority',
         'user_id', 'agent_id', 'category_id',
@@ -67,6 +77,21 @@ class Ticket extends Model
             && in_array($this->status, ['open', 'in_progress'], true)
             && $this->sla_due_at !== null
             && $this->sla_due_at->isPast();
+    }
+
+    /** 当前用户能否重开：本人 + 已关闭 + 未超重开窗口/次数（后台可配） */
+    public function canBeReopenedBy(?User $user): bool
+    {
+        if (! $user || $user->id !== $this->user_id || $this->status !== 'closed') {
+            return false;
+        }
+        if ((int) $this->reopen_count >= (int) Settings::get('reopen_limit', 3)) {
+            return false;
+        }
+
+        $days = (int) Settings::get('reopen_days', 14);
+
+        return ! ($this->closed_at && $this->closed_at->lt(now()->subDays($days)));
     }
 
     public function user(): BelongsTo

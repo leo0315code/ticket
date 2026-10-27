@@ -26,7 +26,7 @@
             <el-form-item label="内容" required>
                 <el-input v-model="form.content" type="textarea" :rows="8" maxlength="5000" show-word-limit placeholder="详细描述问题现象、出现时间、已尝试的操作等" />
             </el-form-item>
-            <el-form-item label="附件（可选，最多 10MB/个）" class="attach-item">
+            <el-form-item :label="`附件（可选，最多 ${maxMb}MB/个）`" class="attach-item">
                 <div class="attach-box" :class="{ mobile: isMobile }">
                     <el-upload
                         :show-file-list="false"
@@ -73,13 +73,15 @@ import { ElMessage } from 'element-plus';
 import http from '../api';
 import { useAuthStore } from '../stores/auth';
 import { adminPath, ticketPath } from '../paths';
+import { loadMeta, meta } from '../meta';
 
 const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
+const maxMb = ref(meta().attach_max_mb);
 const files = ref([]);
 
 function addFile(file) {
-    if (file.size > 10 * 1024 * 1024) {
-        ElMessage.warning(`「${file.name}」超过 10MB，未添加`);
+    if (file.size > maxMb.value * 1024 * 1024) {
+        ElMessage.warning(`「${file.name}」超过 ${maxMb.value}MB，未添加`);
         return;
     }
     if (files.value.length >= 5) {

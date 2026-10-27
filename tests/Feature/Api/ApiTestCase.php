@@ -3,12 +3,20 @@
 namespace Tests\Feature\Api;
 
 use App\Models\User;
+use App\Support\Settings;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
 abstract class ApiTestCase extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        // 设置是进程内静态缓存，测试之间必须清掉
+        Settings::flush();
+    }
 
     protected function makeUser(string $role = 'user', array $attrs = []): User
     {

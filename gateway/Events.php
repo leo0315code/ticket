@@ -86,7 +86,7 @@ class Events
             }
 
             // token 过期（Sanctum 默认 30 天）或账号停用，都不允许建立实时连接
-            $expired = $row['expires_at'] !== null && strtotime($row['expires_at']) <= time();
+            $expired = $row['expires_at'] !== null && self::utcTimestamp($row['expires_at']) <= time();
             if ($expired || (int) $row['is_active'] !== 1) {
                 return null;
             }
@@ -114,36 +114,50 @@ class Events
         try {
             $hash = hash('sha256', $ticket);
             $st = self::pdo()->prepare(
-                'UPDATE ws_tickets SET used_at = NOW()
-                  WHERE ticket_hash = ? AND used_at IS NULL AND expires_at > NOW()'
-            );
-            $st->execute([$hash]);
-
-            if ($st->rowCount() !== 1) {
-                return null;
-            }
-
-            $st = self::pdo()->prepare(
-                'SELECT w.user_id, u.role, u.is_active
-                   FROM ws_tickets w
-                   JOIN users u ON u.id = w.user_id
-                  WHERE w.ticket_hash = ?'
+                'SELECT id, user_id, expires_at, used_at FROM ws_tickets WHERE ticket_hash = ?'
             );
             $st->execute([$hash]);
             $row = $st->fetch(PDO::FETCH_ASSOC);
 
-            if (! $row || (int) $row['is_active'] !== 1) {
+            // 数据库存的是 UTC（Laravel app.timezone=UTC），MySQL 的 NOW() 是系统本地时区，
+            // 所以过期判断和 used_at 写入都用 PHP 的 UTC 时间，别用 SQL 的 NOW()。
+            if (! $row || $row['used_at'] !== null) {
+                return null;
+            }
+            if (self::utcTimestamp($row['expires_at']) <= time()) {
+                return null;
+            }
+
+            $upd = self::pdo()->prepare(
+                'UPDATE ws_tickets SET used_at = ? WHERE id = ? AND used_at IS NULL'
+            );
+            $upd->execute([gmdate('Y-m-d H:i:s'), (int) $row['id']]);
+            if ($upd->rowCount() !== 1) {
+                return null; // 并发下被别人用掉了
+            }
+
+            $st = self::pdo()->prepare('SELECT role, is_active FROM users WHERE id = ?');
+            $st->execute([(int) $row['user_id']]);
+            $user = $st->fetch(PDO::FETCH_ASSOC);
+
+            if (! $user || (int) $user['is_active'] !== 1) {
                 return null;
             }
 
             return [
                 'id' => (int) $row['user_id'],
-                'role' => (string) $row['role'],
-                'is_staff' => self::isStaffRole((string) $row['role']),
+                'role' => (string) $user['role'],
+                'is_staff' => self::isStaffRole((string) $user['role']),
             ];
         } catch (Throwable $e) {
             return null;
         }
+    }
+
+    /** 库里存的是 UTC 字符串，显式按 UTC 解析，避免 PHP 默认时区不同导致误判 */
+    private static function utcTimestamp(string $datetime): int
+    {
+        return (int) strtotime($datetime.' UTC');
     }
 
     /** 角色是否属于后台坐席（以 roles 表的 panel.access 权限为准，兼容自定义角色） */

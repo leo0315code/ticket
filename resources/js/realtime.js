@@ -65,15 +65,20 @@ export async function connectRealtime(onMessage) {
     const ticket = await connecting;
     connecting = null;
 
-    // 没有票据（未登录 / 接口失败）就等下次触发重连
-    if (! ticket || ws) return;
+    // 没有票据（未登录 / 接口失败）就退避重试，别让调用方空转
+    if (! ticket || ws) {
+        if (! ws && localStorage.getItem('ticket_token')) scheduleReconnect();
+        return;
+    }
 
     const url = realtimeUrl();
     const startedAt = performance.now();
+    let authed = false;
     ws = new WebSocket(`${url}?ticket=${encodeURIComponent(ticket)}`);
 
     ws.onopen = () => {
-        reconnectDelay = 1000;
+        // 注意：101 只代表 TCP/TLS 通了，网关可能马上回 auth_failed 再断开，
+        // 所以退避计数要等收到 connected 才清零，否则会在 1s 间隔里无限重连。
         const cost = Math.round(performance.now() - startedAt);
         if (cost > 800) console.info(`[realtime] WebSocket 连接耗时 ${cost}ms`);
     };
@@ -85,8 +90,17 @@ export async function connectRealtime(onMessage) {
         } catch {
             return; // pong 等纯文本心跳
         }
-        // connected/ping 为连接层消息，其余派发给订阅者（notification / reply / ...）
-        if (payload.type && payload.type !== 'connected' && payload.type !== 'ping') {
+        if (payload.type === 'connected') {
+            authed = true;
+            reconnectDelay = 1000;
+            return;
+        }
+        if (payload.type === 'auth_failed') {
+            console.warn('[realtime] 网关鉴权失败：票据无效/过期，或网关未重启仍不认 ticket');
+            return;
+        }
+        // 其余派发给订阅者（notification / reply / ...）
+        if (payload.type && payload.type !== 'ping') {
             handlers.forEach((fn) => fn(payload));
         }
     };
@@ -98,15 +112,20 @@ export async function connectRealtime(onMessage) {
 
     ws.onclose = () => {
         ws = null;
-        // 断线重连（1s 起，最长 15s）；每次重连都会重新换一张票据
-        clearTimeout(reconnectTimer);
-        reconnectTimer = setTimeout(() => {
-            reconnectDelay = Math.min(reconnectDelay * 2, 15000);
-            if (localStorage.getItem('ticket_token')) {
-                connectRealtime();
-            }
-        }, reconnectDelay);
+        // 没通过鉴权就断开：不重置退避，避免网关拒连时形成 1 秒一次的循环
+        scheduleReconnect(authed ? 1000 : reconnectDelay);
     };
+}
+
+/** 退避重连：1s → 2s → 4s → 8s → 15s → 最大 30s */
+function scheduleReconnect(delay = reconnectDelay) {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = setTimeout(() => {
+        reconnectDelay = Math.min(Math.max(delay, 1000) * 2, 30000);
+        if (localStorage.getItem('ticket_token')) {
+            connectRealtime();
+        }
+    }, delay);
 }
 
 export async function fetchNotifications(page = 1) {

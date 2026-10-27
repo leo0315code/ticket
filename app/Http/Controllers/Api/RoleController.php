@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Models\Role;
 use App\Support\Permissions;
 use Illuminate\Http\JsonResponse;
@@ -43,6 +44,8 @@ class RoleController extends Controller
 
         $role = Role::create([...$data, 'is_system' => false]);
 
+        AuditLog::record('role_created', $role, ['permissions' => $role->permissions, 'scope' => $role->ticket_scope]);
+
         return response()->json($this->payload($role), 201);
     }
 
@@ -59,7 +62,12 @@ class RoleController extends Controller
             'ticket_scope' => ['sometimes', Rule::in(array_keys(Role::SCOPES))],
         ]);
 
+        $before = ['permissions' => $role->permissions, 'scope' => $role->ticket_scope, 'label' => $role->label];
         $role->update($data);
+
+        AuditLog::record('role_updated', $role, ['before' => $before, 'after' => [
+            'permissions' => $role->permissions, 'scope' => $role->ticket_scope, 'label' => $role->label,
+        ]]);
 
         return response()->json($this->payload($role->fresh()));
     }
@@ -73,6 +81,7 @@ class RoleController extends Controller
             return response()->json(['message' => '还有用户使用该角色，请先调整这些用户的角色'], 422);
         }
 
+        AuditLog::record('role_deleted', $role, ['permissions' => $role->permissions]);
         $role->delete();
 
         return response()->json(['message' => '角色已删除']);

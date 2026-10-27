@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Resources\UserResource;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -70,6 +71,8 @@ class UserController extends Controller
 
         $user = User::create($data);
 
+        AuditLog::record('user_created', $user, ['role' => $user->role]);
+
         return response()->json(new UserResource($user), 201);
     }
 
@@ -105,7 +108,18 @@ class UserController extends Controller
             $user->tokens()->delete();
         }
 
+        $before = ['role' => $user->role, 'is_active' => $user->is_active, 'name' => $user->name];
         $user->update($data);
+
+        if ($before['role'] !== $user->role) {
+            AuditLog::record('user_role_changed', $user, ['before' => $before['role'], 'after' => $user->role]);
+        }
+        if ($before['is_active'] !== $user->is_active) {
+            AuditLog::record($user->is_active ? 'user_enabled' : 'user_disabled', $user);
+        }
+        if (! isset($data['role']) && ! array_key_exists('is_active', $data)) {
+            AuditLog::record('user_updated', $user, ['before' => $before]);
+        }
 
         return response()->json(new UserResource($user->fresh()));
     }
@@ -116,6 +130,7 @@ class UserController extends Controller
         $password = Str::random(12);
 
         $user->update(['password' => $password]);
+        AuditLog::record('user_password_reset', $user);
         // 使该用户全部 token 失效
         $user->tokens()->delete();
 

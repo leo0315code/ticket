@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketExportController;
+use App\Http\Controllers\Api\AuditLogController;
 use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\WeChatQrController;
 use App\Http\Controllers\Api\WsTicketController;
@@ -91,6 +92,7 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
 
     // 客服工作台
     Route::get('logs', [TicketLogController::class, 'index'])->middleware('permission:log.view');
+    Route::get('audit-logs', [AuditLogController::class, 'index'])->middleware('permission:log.view');
     Route::get('/canned-responses', [CannedResponseController::class, 'index'])->middleware('permission:canned.manage');
     Route::post('/canned-responses', [CannedResponseController::class, 'store'])->middleware('permission:canned.manage');
     Route::put('/canned-responses/{cannedResponse}', [CannedResponseController::class, 'update'])->middleware('permission:canned.manage');

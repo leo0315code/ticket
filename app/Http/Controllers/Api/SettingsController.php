@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Models\AuditLog;
 use App\Support\Settings;
 use App\Support\Sms\SmsManager;
 use Illuminate\Http\JsonResponse;
@@ -109,7 +110,13 @@ class SettingsController extends Controller
             );
         }
 
+        $changed = array_keys($data);
         Settings::put($data);
+
+        AuditLog::record('settings_updated', null, [
+            'keys' => array_values(array_diff($changed, self::SECRETS)),
+            'secrets_changed' => array_values(array_intersect($changed, self::SECRETS)),
+        ]);
 
         return response()->json(Settings::all());
     }

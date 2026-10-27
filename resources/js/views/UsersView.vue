@@ -31,7 +31,7 @@
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column label="姓名" width="120">
                 <template #default="{ row }">
-                    <el-link type="primary" :underline="false" @click="openDetail(row)">{{ row.name }}</el-link>
+                    <el-link type="primary" underline="never" @click="openDetail(row)">{{ row.name }}</el-link>
                 </template>
             </el-table-column>
             <el-table-column prop="username" label="账号" width="120" />

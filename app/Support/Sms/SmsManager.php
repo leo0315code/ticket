@@ -21,9 +21,46 @@ class SmsManager
             return app(SmsSender::class);
         }
 
-        return Settings::get('sms_driver') === 'http'
-            ? new HttpSmsSender((string) Settings::get('sms_http_url'), (string) Settings::get('sms_sign', '工单支持中心'))
-            : new LogSmsSender();
+        $provider = self::provider();
+        $sign = (string) Settings::get('sms_sign', '工单支持中心');
+
+        return match ($provider) {
+            'aliyun' => new AliyunSmsSender(
+                (string) Settings::get('sms_aliyun_key'),
+                (string) Settings::get('sms_aliyun_secret'),
+                (string) Settings::get('sms_aliyun_sign'),
+                (string) Settings::get('sms_aliyun_template'),
+            ),
+            'tencent' => new TencentSmsSender(
+                (string) Settings::get('sms_tencent_secret_id'),
+                (string) Settings::get('sms_tencent_secret_key'),
+                (string) Settings::get('sms_tencent_app_id'),
+                (string) Settings::get('sms_tencent_sign'),
+                (string) Settings::get('sms_tencent_template'),
+                (string) Settings::get('sms_tencent_region', 'ap-guangzhou'),
+            ),
+            'yunpian' => new YunpianSmsSender((string) Settings::get('sms_yunpian_key'), $sign),
+            'http' => new HttpSmsSender((string) Settings::get('sms_http_url'), $sign),
+            default => new LogSmsSender(),
+        };
+    }
+
+    /** 当前短信平台：log / aliyun / tencent / yunpian / http */
+    public static function provider(): string
+    {
+        $provider = (string) Settings::get('sms_provider', 'log');
+        // 兼容旧配置：只设过 sms_driver=http
+        if ($provider === 'log' && Settings::get('sms_driver') === 'http') {
+            return 'http';
+        }
+
+        return in_array($provider, ['log', 'aliyun', 'tencent', 'yunpian', 'http'], true) ? $provider : 'log';
+    }
+
+    /** 后台“发送测试短信”，直接用当前平台发一条示例码 */
+    public static function sendTest(string $phone): void
+    {
+        self::sender()->send($phone, '123456', 'test');
     }
 
     /** 生成并发送验证码；返回有效期（秒） */

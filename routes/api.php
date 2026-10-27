@@ -104,5 +104,6 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
     Route::put('/roles/{role}', [RoleController::class, 'update'])->middleware('permission:role.manage');
     Route::delete('/roles/{role}', [RoleController::class, 'destroy'])->middleware('permission:role.manage');
     Route::get('/settings', [SettingsController::class, 'index'])->middleware('permission:settings.manage');
+    Route::post('/settings/sms-test', [SettingsController::class, 'testSms'])->middleware('permission:settings.manage');
     Route::put('/settings', [SettingsController::class, 'update'])->middleware('permission:settings.manage');
 });

@@ -22,7 +22,19 @@ class Settings
 
         // 登录方式：手机号验证码 / 微信公众号扫码
         'phone_login_enabled' => false,
-        'sms_driver' => 'log',          // log（写日志，便于联调）| http（POST 到自己的短信网关）
+        'sms_provider' => 'log',
+        'sms_driver' => 'log',
+        'sms_aliyun_key' => '',
+        'sms_aliyun_secret' => '',
+        'sms_aliyun_sign' => '',
+        'sms_aliyun_template' => '',
+        'sms_tencent_secret_id' => '',
+        'sms_tencent_secret_key' => '',
+        'sms_tencent_app_id' => '',
+        'sms_tencent_sign' => '',
+        'sms_tencent_template' => '',
+        'sms_tencent_region' => 'ap-guangzhou',
+        'sms_yunpian_key' => '',          // log（写日志，便于联调）| http（POST 到自己的短信网关）
         'sms_http_url' => '',
         'sms_sign' => '工单支持中心',
         'sms_code_ttl' => 300,          // 验证码有效期（秒）

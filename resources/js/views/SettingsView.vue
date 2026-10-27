@@ -40,22 +40,80 @@
                 <el-switch v-model="form.phone_login_enabled" />
                 <span class="hint">开启后登录页出现「手机号验证码」入口；未注册的手机号验证通过后自动建号（受「开放注册」开关控制）</span>
             </el-form-item>
-            <el-form-item label="短信通道">
-                <el-select v-model="form.sms_driver" style="width: 180px">
-                    <el-option label="写入日志（联调）" value="log" />
-                    <el-option label="HTTP 网关" value="http" />
+            <el-form-item label="短信平台">
+                <el-select v-model="form.sms_provider" style="width: 220px">
+                    <el-option label="写入日志（联调，不发真短信）" value="log" />
+                    <el-option label="阿里云短信" value="aliyun" />
+                    <el-option label="腾讯云短信" value="tencent" />
+                    <el-option label="云片短信" value="yunpian" />
+                    <el-option label="自定义 HTTP 网关" value="http" />
                 </el-select>
-                <span class="hint">日志模式验证码写在 storage/logs/laravel.log</span>
+                <span class="hint">验证码短信走哪个平台；日志模式只写到 storage/logs/laravel.log</span>
             </el-form-item>
-            <el-form-item v-if="form.sms_driver === 'http'" label="短信网关地址">
+
+            <template v-if="form.sms_provider === 'aliyun'">
+                <el-form-item label="AccessKey ID">
+                    <el-input v-model="form.sms_aliyun_key" style="width: 320px" />
+                </el-form-item>
+                <el-form-item label="AccessKey Secret">
+                    <el-input v-model="form.sms_aliyun_secret" show-password placeholder="留空表示不修改" style="width: 320px" />
+                    <span v-if="form.sms_aliyun_secret_set" class="hint">已设置</span>
+                </el-form-item>
+                <el-form-item label="短信签名">
+                    <el-input v-model="form.sms_aliyun_sign" maxlength="30" style="width: 200px" />
+                </el-form-item>
+                <el-form-item label="模板 CODE">
+                    <el-input v-model="form.sms_aliyun_template" placeholder="如 SMS_123456789" style="width: 240px" />
+                    <span class="hint">模板变量用 ${code}</span>
+                </el-form-item>
+            </template>
+
+            <template v-else-if="form.sms_provider === 'tencent'">
+                <el-form-item label="SecretId">
+                    <el-input v-model="form.sms_tencent_secret_id" style="width: 320px" />
+                </el-form-item>
+                <el-form-item label="SecretKey">
+                    <el-input v-model="form.sms_tencent_secret_key" show-password placeholder="留空表示不修改" style="width: 320px" />
+                    <span v-if="form.sms_tencent_secret_key_set" class="hint">已设置</span>
+                </el-form-item>
+                <el-form-item label="短信应用 SdkAppId">
+                    <el-input v-model="form.sms_tencent_app_id" placeholder="1400xxxxxx" style="width: 200px" />
+                </el-form-item>
+                <el-form-item label="短信签名">
+                    <el-input v-model="form.sms_tencent_sign" maxlength="30" style="width: 200px" />
+                </el-form-item>
+                <el-form-item label="模板 ID">
+                    <el-input v-model="form.sms_tencent_template" placeholder="如 1234567" style="width: 200px" />
+                </el-form-item>
+                <el-form-item label="地域">
+                    <el-input v-model="form.sms_tencent_region" placeholder="ap-guangzhou" style="width: 200px" />
+                </el-form-item>
+            </template>
+
+            <template v-else-if="form.sms_provider === 'yunpian'">
+                <el-form-item label="APIKEY">
+                    <el-input v-model="form.sms_yunpian_key" show-password placeholder="留空表示不修改" style="width: 320px" />
+                    <span v-if="form.sms_yunpian_key_set" class="hint">已设置</span>
+                </el-form-item>
+            </template>
+
+            <el-form-item v-if="form.sms_provider === 'http'" label="短信网关地址">
                 <el-input v-model="form.sms_http_url" placeholder="https://sms.example.com/send" style="width: 360px" />
             </el-form-item>
-            <el-form-item label="短信签名">
+
+            <el-form-item v-if="['http', 'yunpian'].includes(form.sms_provider)" label="短信签名">
                 <el-input v-model="form.sms_sign" maxlength="30" style="width: 200px" />
             </el-form-item>
+
             <el-form-item label="验证码有效期">
                 <el-input-number v-model="form.sms_code_ttl" :min="60" :max="1800" :step="30" />
                 <span class="hint">秒</span>
+            </el-form-item>
+
+            <el-form-item label="测试发送">
+                <el-input v-model="testPhone" maxlength="11" placeholder="接收测试短信的手机号" style="width: 200px" />
+                <el-button :loading="testing" style="margin-left: 10px" @click="sendTest">发送测试短信</el-button>
+                <span class="hint">用当前平台发一条「123456」，保存后再测</span>
             </el-form-item>
 
             <el-form-item label="微信扫码登录">
@@ -131,7 +189,21 @@ const form = reactive({
     reopen_days: 14,
     reopen_limit: 3,
     phone_login_enabled: false,
-    sms_driver: 'log',
+    sms_provider: 'log',
+    sms_aliyun_key: '',
+    sms_aliyun_secret: '',
+    sms_aliyun_sign: '',
+    sms_aliyun_template: '',
+    sms_aliyun_secret_set: false,
+    sms_tencent_secret_id: '',
+    sms_tencent_secret_key: '',
+    sms_tencent_app_id: '',
+    sms_tencent_sign: '',
+    sms_tencent_template: '',
+    sms_tencent_region: 'ap-guangzhou',
+    sms_tencent_secret_key_set: false,
+    sms_yunpian_key: '',
+    sms_yunpian_key_set: false,
     sms_http_url: '',
     sms_sign: '工单支持中心',
     sms_code_ttl: 300,
@@ -143,6 +215,24 @@ const form = reactive({
 });
 
 const wechatCallback = `${window.location.origin}/wechat/callback`;
+const testPhone = ref('');
+const testing = ref(false);
+
+async function sendTest() {
+    if (!/^1[3-9]\d{9}$/.test(testPhone.value)) {
+        ElMessage.warning('请输入正确的手机号');
+        return;
+    }
+    testing.value = true;
+    try {
+        const { data } = await http.post('/settings/sms-test', { phone: testPhone.value });
+        ElMessage.success(data.message || '已发送');
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '发送失败');
+    } finally {
+        testing.value = false;
+    }
+}
 
 async function load() {
     loading.value = true;

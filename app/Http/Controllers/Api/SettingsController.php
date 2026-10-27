@@ -4,18 +4,28 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Support\Settings;
+use App\Support\Sms\SmsManager;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
 {
+    /** 密钥类设置：不回传给前端，只告诉是否已设置 */
+    private const SECRETS = [
+        'wechat_app_secret',
+        'sms_aliyun_secret',
+        'sms_tencent_secret_key',
+        'sms_yunpian_key',
+    ];
+
     /** 系统设置（admin） */
     public function index(): JsonResponse
     {
         $all = Settings::all();
-        // AppSecret 不出库：只告诉前端“是否已设置”
-        $all['wechat_app_secret'] = '';
-        $all['wechat_app_secret_set'] = filled(Settings::get('wechat_app_secret'));
+        foreach (self::SECRETS as $key) {
+            $all[$key] = '';
+            $all[$key.'_set'] = filled(Settings::get($key));
+        }
 
         return response()->json($all);
     }
@@ -38,7 +48,19 @@ class SettingsController extends Controller
             'notify_mail' => ['sometimes', 'boolean'],
 
             'phone_login_enabled' => ['sometimes', 'boolean'],
+            'sms_provider' => ['sometimes', 'in:log,aliyun,tencent,yunpian,http'],
             'sms_driver' => ['sometimes', 'in:log,http'],
+            'sms_aliyun_key' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'sms_aliyun_secret' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'sms_aliyun_sign' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'sms_aliyun_template' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'sms_tencent_secret_id' => ['sometimes', 'nullable', 'string', 'max:100'],
+            'sms_tencent_secret_key' => ['sometimes', 'nullable', 'string', 'max:200'],
+            'sms_tencent_app_id' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'sms_tencent_sign' => ['sometimes', 'nullable', 'string', 'max:30'],
+            'sms_tencent_template' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'sms_tencent_region' => ['sometimes', 'nullable', 'string', 'max:50'],
+            'sms_yunpian_key' => ['sometimes', 'nullable', 'string', 'max:200'],
             'sms_http_url' => ['sometimes', 'nullable', 'url', 'max:255'],
             'sms_sign' => ['sometimes', 'string', 'max:30'],
             'sms_code_ttl' => ['sometimes', 'integer', 'min:60', 'max:1800'],
@@ -49,8 +71,10 @@ class SettingsController extends Controller
         ]);
 
         // 留空表示“不修改”，避免前端回显时把密钥清掉
-        if (array_key_exists('wechat_app_secret', $data) && blank($data['wechat_app_secret'])) {
-            unset($data['wechat_app_secret']);
+        foreach (self::SECRETS as $key) {
+            if (array_key_exists($key, $data) && blank($data[$key])) {
+                unset($data[$key]);
+            }
         }
 
         if (isset($data['sla_hours'])) {
@@ -64,5 +88,21 @@ class SettingsController extends Controller
         Settings::put($data);
 
         return response()->json(Settings::all());
+    }
+
+    /** 发送测试短信，验证当前平台配置是否可用 */
+    public function testSms(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'phone' => ['required', 'regex:/^1[3-9]\d{9}$/'],
+        ]);
+
+        try {
+            SmsManager::sendTest($data['phone']);
+        } catch (\Throwable $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        }
+
+        return response()->json(['message' => '测试短信已发送，请查收']);
     }
 }

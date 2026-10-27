@@ -6,6 +6,7 @@ use App\Models\Category;
 use App\Models\Ticket;
 use App\Support\Settings;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 
 class SettingsTest extends ApiTestCase
@@ -134,5 +135,83 @@ class SettingsTest extends ApiTestCase
         $this->actingAsApi($user)->postJson("/api/tickets/{$ticket->id}/attachments", [
             'file' => UploadedFile::fake()->create('small.pdf', 512, 'application/pdf'),
         ])->assertCreated();
+    }
+
+    public function test_sms_provider_is_configurable_and_secrets_are_masked(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        $this->actingAsApi($admin)->putJson('/api/settings', [
+            'sms_provider' => 'aliyun',
+            'sms_aliyun_key' => 'LTAI-test',
+            'sms_aliyun_secret' => 'super-secret',
+            'sms_aliyun_sign' => '工单支持中心',
+            'sms_aliyun_template' => 'SMS_123456789',
+        ])->assertOk();
+
+        $this->assertSame('aliyun', Settings::get('sms_provider'));
+        $this->assertSame('super-secret', Settings::get('sms_aliyun_secret'));
+
+        $res = $this->actingAsApi($admin)->getJson('/api/settings')->assertOk();
+        $res->assertJsonPath('sms_aliyun_secret', '')
+            ->assertJsonPath('sms_aliyun_secret_set', true)
+            ->assertJsonPath('sms_aliyun_template', 'SMS_123456789');
+
+        // 留空保存不会把密钥清掉
+        $this->actingAsApi($admin)->putJson('/api/settings', ['sms_aliyun_secret' => ''])->assertOk();
+        $this->assertSame('super-secret', Settings::get('sms_aliyun_secret'));
+
+        $this->actingAsApi($admin)->putJson('/api/settings', ['sms_provider' => 'unknown'])
+            ->assertStatus(422)->assertJsonValidationErrors('sms_provider');
+    }
+
+    public function test_sms_test_send_uses_aliyun_tencent_and_yunpian_apis(): void
+    {
+        $admin = $this->makeUser('admin');
+
+        // 阿里云
+        Settings::put([
+            'sms_provider' => 'aliyun',
+            'sms_aliyun_key' => 'k', 'sms_aliyun_secret' => 's',
+            'sms_aliyun_sign' => '签名', 'sms_aliyun_template' => 'SMS_1',
+        ]);
+        Http::fake(['dysmsapi.aliyuncs.com/*' => Http::response(['Code' => 'OK', 'Message' => 'OK'])]);
+        $this->actingAsApi($admin)->postJson('/api/settings/sms-test', ['phone' => '13800138000'])
+            ->assertOk()->assertJsonPath('message', '测试短信已发送，请查收');
+        Http::assertSent(fn ($request) => str_contains($request->url(), 'dysmsapi.aliyuncs.com')
+            && str_contains($request->url(), 'TemplateCode=SMS_1')
+            && str_contains($request->url(), 'Signature='));
+
+        // 腾讯云
+        Settings::put([
+            'sms_provider' => 'tencent',
+            'sms_tencent_secret_id' => 'id', 'sms_tencent_secret_key' => 'key',
+            'sms_tencent_app_id' => '1400000000', 'sms_tencent_sign' => '签名',
+            'sms_tencent_template' => '1234567',
+        ]);
+        Http::fake(['sms.tencentcloudapi.com*' => Http::response([
+            'Response' => ['SendStatusSet' => [['Code' => 'Ok', 'Message' => 'send success']]],
+        ])]);
+        $this->actingAsApi($admin)->postJson('/api/settings/sms-test', ['phone' => '13800138000'])->assertOk();
+        Http::assertSent(fn ($request) => str_contains($request->header('Authorization')[0] ?? '', 'TC3-HMAC-SHA256 Credential=id/'));
+
+        // 云片
+        Settings::put(['sms_provider' => 'yunpian', 'sms_yunpian_key' => 'yp']);
+        Http::fake(['sms.yunpian.com/*' => Http::response(['code' => 0, 'msg' => 'OK'])]);
+        $this->actingAsApi($admin)->postJson('/api/settings/sms-test', ['phone' => '13800138000'])->assertOk();
+
+        $this->actingAsApi($admin)->postJson('/api/settings/sms-test', ['phone' => '123'])
+            ->assertStatus(422)->assertJsonValidationErrors('phone');
+    }
+
+    public function test_sms_test_send_surfaces_provider_error(): void
+    {
+        $admin = $this->makeUser('admin');
+        Settings::put(['sms_provider' => 'yunpian', 'sms_yunpian_key' => 'yp']);
+
+        Http::fake(['sms.yunpian.com/*' => Http::response(['code' => 22, 'msg' => '余额不足'])]);
+
+        $this->actingAsApi($admin)->postJson('/api/settings/sms-test', ['phone' => '13800138000'])
+            ->assertStatus(422)->assertJsonPath('message', '短信发送失败：余额不足');
     }
 }

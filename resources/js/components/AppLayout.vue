@@ -137,7 +137,9 @@ async function onCommand(cmd) {
     if (cmd === 'logout') {
         await auth.logout();
         ElMessage.success('已退出登录');
-        router.push('/login');
+        await router.replace('/login');
+        // 兜底：路由没动（例如守卫生效）就整页跳一次，保证页面状态真的重置
+        if (route.path !== '/login') window.location.replace('/login');
     }
 }
 </script>

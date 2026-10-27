@@ -182,7 +182,8 @@ async function saveSettings() {
 async function logout() {
     await auth.logout();
     ElMessage.success('已退出登录');
-    router.push('/login');
+    await router.replace('/login');
+    if (router.currentRoute.value.path !== '/login') window.location.replace('/login');
 }
 
 onMounted(load);

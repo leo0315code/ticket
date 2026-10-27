@@ -72,14 +72,16 @@ export const useAuthStore = defineStore('auth', {
             return data.user;
         },
         async logout() {
+            // 本地状态一定清干净；服务端注销失败（token 过期等）不阻塞退出
             try {
                 await http.post('/logout');
-            } finally {
-                this.token = '';
-                this.user = null;
-                localStorage.removeItem('ticket_token');
-                localStorage.removeItem('ticket_user');
+            } catch {
+                // 忽略：本地仍然退出
             }
+            this.token = '';
+            this.user = null;
+            localStorage.removeItem('ticket_token');
+            localStorage.removeItem('ticket_user');
         },
         async refreshMe() {
             const { data } = await http.get('/me');

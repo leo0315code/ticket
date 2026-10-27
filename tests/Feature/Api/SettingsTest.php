@@ -77,11 +77,6 @@ class SettingsTest extends ApiTestCase
             ->assertJsonPath('allow_register', false)
             ->assertJsonPath('site_name', '自建售后');
 
-        $this->postJson('/api/register', [
-            'name' => '新用户',
-            'username' => 'newbie',
-            'password' => 'password123',
-        ])->assertForbidden();
     }
 
     public function test_reopen_limit_setting_blocks_reopen(): void

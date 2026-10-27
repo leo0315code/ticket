@@ -20,9 +20,9 @@
             <el-form-item label="站点名称">
                 <el-input v-model="form.site_name" maxlength="50" />
             </el-form-item>
-            <el-form-item label="开放注册">
+            <el-form-item label="手机号自动建号">
                 <el-switch v-model="form.allow_register" />
-                <span class="hint">关闭后手机号验证通过也不会自动建号，账号只能由管理员创建</span>
+                <span class="hint">关闭后未注册的手机号验证通过也无法登录，账号只能由管理员在用户管理中创建</span>
             </el-form-item>
             <el-form-item label="邮件通知">
                 <el-switch v-model="form.notify_mail" />

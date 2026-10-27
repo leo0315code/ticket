@@ -22,7 +22,6 @@ use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
 // 认证类是暴力破解的首要目标：按 IP 限流
-Route::post('/register', [AuthController::class, 'register'])->middleware('throttle:5,1');
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:10,1');
 Route::post('/admin/login', [AuthController::class, 'adminLogin'])->middleware('throttle:10,1');
 Route::get('/captcha/issue', [CaptchaController::class, 'issue'])->middleware('throttle:30,1');

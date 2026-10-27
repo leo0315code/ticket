@@ -62,10 +62,6 @@ export const useAuthStore = defineStore('auth', {
             this.user = { ...this.user, has_wechat: false, wechat_nickname: null };
             localStorage.setItem('ticket_user', JSON.stringify(this.user));
         },
-        async register(name, username, password) {
-            const { data } = await http.post('/register', { name, username, password });
-            this.save(data.token, data.user);
-        },
         async updateProfile(payload) {
             const { data } = await http.put('/profile', payload);
             this.user = data.user;

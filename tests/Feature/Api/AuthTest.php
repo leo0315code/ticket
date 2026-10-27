@@ -4,30 +4,15 @@ namespace Tests\Feature\Api;
 
 class AuthTest extends ApiTestCase
 {
-    public function test_register_creates_user_with_default_role_and_returns_token(): void
+    public function test_self_registration_is_disabled(): void
     {
-        // 不填邮箱，仅用用户名注册
-        $res = $this->postJson('/api/register', [
+        $this->postJson('/api/register', [
             'name' => '新用户',
             'username' => 'newuser',
             'password' => 'password123',
-        ]);
+        ])->assertNotFound();
 
-        $res->assertCreated()->assertJsonPath('user.role', 'user');
-        $this->assertDatabaseHas('users', ['username' => 'newuser', 'email' => null, 'role' => 'user']);
-    }
-
-    public function test_register_rejects_duplicate_email_and_short_password(): void
-    {
-        \App\Models\User::factory()->create(['username' => 'taken']);
-
-        $this->postJson('/api/register', [
-            'name' => 'a', 'username' => 'taken', 'password' => 'password123',
-        ])->assertStatus(422)->assertJsonValidationErrors('username');
-
-        $this->postJson('/api/register', [
-            'name' => 'a', 'username' => 'ok_name', 'password' => 'short',
-        ])->assertStatus(422)->assertJsonValidationErrors('password');
+        $this->assertDatabaseMissing('users', ['username' => 'newuser']);
     }
 
     public function test_login_by_username_or_email_and_wrong_password_is_401(): void

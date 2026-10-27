@@ -18,26 +18,6 @@ use Illuminate\Validation\Rules\Password;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
-    {
-        if (! Settings::get('allow_register', true)) {
-            return response()->json(['message' => '注册已关闭，请联系管理员开通账号'], 403);
-        }
-
-        $data = $request->validate([
-            'name' => ['required', 'string', 'max:50'],
-            // 账号：2-30 位中文、字母、数字、下划线
-            'username' => ['required', 'string', 'max:30', 'unique:users,username', 'regex:/^[\x{4e00}-\x{9fa5}a-zA-Z0-9_]{2,30}$/u'],
-            'email' => ['nullable', 'email', 'unique:users,email'],
-            'password' => ['required', Password::min(8)],
-        ]);
-
-        $user = User::create([...$data, 'role' => 'user']);
-        $token = $user->createToken('spa')->plainTextToken;
-
-        return response()->json(['token' => $token, 'user' => $user], 201);
-    }
-
     public function login(Request $request): JsonResponse
     {
         $credentials = $request->validate([

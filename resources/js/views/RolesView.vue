@@ -95,6 +95,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { notifyError } from '../notify';
 import http from '../api';
 
 const roles = ref([]);
@@ -134,7 +135,7 @@ function openEdit(row) {
 
 async function save() {
     if (! form.label || (! form.id && ! form.name)) {
-        ElMessage.warning('请填写角色标识和名称');
+        notifyError('请填写角色标识和名称');
         return;
     }
     saving.value = true;
@@ -149,7 +150,7 @@ async function save() {
         await load();
     } catch (e) {
         const errors = e.response?.data?.errors;
-        ElMessage.error(errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || '保存失败'));
+        notifyError(errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || '保存失败'));
     } finally {
         saving.value = false;
     }
@@ -162,7 +163,7 @@ async function remove(row) {
         ElMessage.success('已删除');
         await load();
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '删除失败');
+        notifyError(e.response?.data?.message || '删除失败');
     }
 }
 

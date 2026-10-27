@@ -43,6 +43,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../notify';
 import http from '../api';
 
 const categories = ref([]);
@@ -71,7 +72,7 @@ function openDialog(row = null) {
 
 async function save() {
     if (!form.name.trim()) {
-        ElMessage.warning('请输入分类名称');
+        notifyError('请输入分类名称');
         return;
     }
     saving.value = true;
@@ -85,7 +86,7 @@ async function save() {
         ElMessage.success('已保存');
         await load();
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '保存失败');
+        notifyError(e.response?.data?.message || '保存失败');
     } finally {
         saving.value = false;
     }

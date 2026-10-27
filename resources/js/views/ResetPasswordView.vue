@@ -41,6 +41,7 @@
 import { onMounted, ref } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../notify';
 import http from '../api';
 
 const route = useRoute();
@@ -61,8 +62,8 @@ onMounted(() => {
 });
 
 async function submit() {
-    if (password.value.length < 8) return ElMessage.warning('密码至少 8 位');
-    if (password.value !== confirm.value) return ElMessage.warning('两次输入的密码不一致');
+    if (password.value.length < 8) return notifyError('密码至少 8 位');
+    if (password.value !== confirm.value) return notifyError('两次输入的密码不一致');
 
     loading.value = true;
     try {
@@ -75,7 +76,7 @@ async function submit() {
         done.value = true;
         setTimeout(() => router.push('/login'), 1800);
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '重置失败，链接可能已过期');
+        notifyError(e.response?.data?.message || '重置失败，链接可能已过期');
     } finally {
         loading.value = false;
     }

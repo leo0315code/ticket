@@ -74,6 +74,7 @@
 import { onMounted, reactive, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../../notify';
 import http from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import { avatarColor } from '../../utils/avatar';
@@ -107,7 +108,7 @@ function openSettings() {
 
 async function sendCode() {
     if (!/^1[3-9]\d{9}$/.test(phoneForm.phone)) {
-        ElMessage.warning('请输入正确的手机号');
+        notifyError('请输入正确的手机号');
         return;
     }
     sendingCode.value = true;
@@ -121,7 +122,7 @@ async function sendCode() {
             if (countdown.value <= 0) clearInterval(countdownTimer);
         }, 1000);
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '验证码发送失败');
+        notifyError(e.response?.data?.message || '验证码发送失败');
     } finally {
         sendingCode.value = false;
     }
@@ -134,7 +135,7 @@ async function bindPhone() {
         ElMessage.success('手机号已绑定');
         phoneForm.code = '';
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '绑定失败');
+        notifyError(e.response?.data?.message || '绑定失败');
     } finally {
         bindingPhone.value = false;
     }
@@ -145,7 +146,7 @@ async function unbindWechat() {
         await auth.unbindWechat();
         ElMessage.success('微信已解绑');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '解绑失败');
+        notifyError(e.response?.data?.message || '解绑失败');
     }
 }
 
@@ -156,13 +157,13 @@ async function bindWechat() {
         sessionStorage.setItem('wechat_bind', '1');
         window.location.href = data.url;
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '微信登录未启用');
+        notifyError(e.response?.data?.message || '微信登录未启用');
     }
 }
 
 async function saveSettings() {
     if (!profileForm.name.trim()) {
-        ElMessage.warning('昵称不能为空');
+        notifyError('昵称不能为空');
         return;
     }
     saving.value = true;
@@ -172,7 +173,7 @@ async function saveSettings() {
         ElMessage.success('资料已更新');
     } catch (e) {
         const errors = e.response?.data?.errors;
-        ElMessage.error(e.response?.data?.message || (errors ? Object.values(errors).flat().join('；') : '保存失败'));
+        notifyError(e.response?.data?.message || (errors ? Object.values(errors).flat().join('；') : '保存失败'));
     } finally {
         saving.value = false;
     }

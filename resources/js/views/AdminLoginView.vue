@@ -35,7 +35,6 @@
                 </el-button>
             </el-form>
 
-            <el-alert v-if="error" :title="error" :type="errorType" :closable="false" style="margin-top: 14px" />
         </el-card>
     </div>
 </template>
@@ -49,11 +48,10 @@ import { toggleTheme } from '../theme';
 import { adminPath } from '../paths';
 import http from '../api';
 import SliderCaptcha from '../components/SliderCaptcha.vue';
+import { notifyError } from '../notify';
 
 const dark = ref(document.documentElement.classList.contains('dark'));
 const loading = ref(false);
-const error = ref('');
-const errorType = ref('error');
 const form = reactive({ account: '', password: '' });
 const captchaTicket = ref(null);
 const captchaRef = ref();
@@ -64,7 +62,6 @@ const redirectTo = typeof route.query.redirect === 'string' ? route.query.redire
 
 async function doLogin() {
     loading.value = true;
-    error.value = '';
     try {
         // 后台登录走专用接口：要求滑块一次性票据，后端核销
         const { data } = await http.post('/admin/login', {
@@ -74,8 +71,7 @@ async function doLogin() {
         auth.save(data.token, data.user);
         router.push(redirectTo || adminPath('tickets'));
     } catch (e) {
-        errorType.value = 'error';
-        error.value = e.response?.data?.message || '登录失败';
+        notifyError(e.response?.data?.message || '登录失败');
         captchaRef.value?.reset();
     } finally {
         loading.value = false;

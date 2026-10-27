@@ -97,6 +97,7 @@
 <script setup>
 import { computed, nextTick, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../../notify';
 import { CircleCloseFilled } from '@element-plus/icons-vue';
 import http from '../../api';
 import { useAuthStore } from '../../stores/auth';
@@ -151,7 +152,7 @@ async function saveCanned() {
         await loadCanned();
         ElMessage.success('模板已保存');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '保存失败');
+        notifyError(e.response?.data?.message || '保存失败');
     } finally {
         cannedSaving.value = false;
     }
@@ -249,7 +250,7 @@ function formatSize(bytes) {
 
 async function send() {
     if (! reply.value.trim() && files.value.length === 0) {
-        ElMessage.warning(isInternal.value ? '请输入备注内容' : '请输入回复内容或添加附件');
+        notifyError(isInternal.value ? '请输入备注内容' : '请输入回复内容或添加附件');
         return;
     }
     sending.value = true;
@@ -270,7 +271,7 @@ async function send() {
                     await http.post(`/tickets/${props.ticketId}/attachments`, fd);
                     ok++;
                 } catch (e) {
-                    ElMessage.warning(`附件「${f.name}」上传失败，可在附件区重试`);
+                    notifyError(`附件「${f.name}」上传失败，可在附件区重试`);
                 }
             }
             files.value = [];

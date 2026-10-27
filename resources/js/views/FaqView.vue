@@ -81,6 +81,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../notify';
 import { Search } from '@element-plus/icons-vue';
 import http from '../api';
 import { useAuthStore } from '../stores/auth';
@@ -146,7 +147,7 @@ async function vote(f, helpful) {
         voted.value = new Set([...voted.value, f.id]);
         ElMessage.success('感谢反馈');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '提交失败');
+        notifyError(e.response?.data?.message || '提交失败');
     }
 }
 
@@ -162,7 +163,7 @@ function openDialog(row = null) {
 
 async function save() {
     if (! form.question.trim() || ! form.answer.trim()) {
-        ElMessage.warning('请填写问题和答案');
+        notifyError('请填写问题和答案');
         return;
     }
     saving.value = true;
@@ -176,7 +177,7 @@ async function save() {
         ElMessage.success('已保存');
         await load();
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '保存失败');
+        notifyError(e.response?.data?.message || '保存失败');
     } finally {
         saving.value = false;
     }

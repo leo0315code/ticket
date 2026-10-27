@@ -17,11 +17,11 @@
             <!-- 手机号验证码 -->
             <div v-if="mode === 'phone'" class="form">
                 <label>手机号</label>
-                <el-input v-model="phone.phone" maxlength="11" size="large" placeholder="请输入你的手机号" clearable @input="error = ''" />
+                <el-input v-model="phone.phone" maxlength="11" size="large" placeholder="请输入你的手机号" clearable />
 
                 <label>验证码</label>
                 <div class="code-row">
-                    <el-input v-model="phone.code" maxlength="6" size="large" placeholder="请输入 6 位数字" @input="error = ''" @keyup.enter="doPhoneLogin" />
+                    <el-input v-model="phone.code" maxlength="6" size="large" placeholder="请输入 6 位数字" @keyup.enter="doPhoneLogin" />
                     <el-button class="code-btn" :disabled="countdown > 0 || phoneSending" :loading="phoneSending" @click="sendPhoneCode">
                         {{ countdown > 0 ? countdown + 's' : '发送验证码' }}
                     </el-button>
@@ -34,10 +34,10 @@
             <!-- 账号密码 -->
             <div v-else-if="mode === 'password'" class="form">
                 <label>账号</label>
-                <el-input v-model="form.account" size="large" placeholder="用户名 / 邮箱" clearable @input="error = ''" />
+                <el-input v-model="form.account" size="large" placeholder="用户名 / 邮箱" clearable />
 
                 <label>密码</label>
-                <el-input v-model="form.password" type="password" size="large" placeholder="请输入密码" show-password @input="error = ''" @keyup.enter="doLogin" />
+                <el-input v-model="form.password" type="password" size="large" placeholder="请输入密码" show-password @keyup.enter="doLogin" />
 
                 <el-button class="submit" :loading="loading" @click="doLogin">登 录</el-button>
                 <p class="terms">
@@ -61,8 +61,6 @@
                     <p class="terms">跳转微信授权页，扫码确认后自动回到这里；微信需先在「账号设置」中绑定</p>
                 </template>
             </div>
-
-            <el-alert v-if="error" :title="error" type="error" :closable="false" class="error" />
 
             <div class="foot">
                 <a @click="$router.push('/help')">帮助中心</a>
@@ -93,7 +91,6 @@ const site = reactive({ ...meta() });
 // 登录方式：password / phone / wechat；默认账号密码登录
 const mode = ref('password');
 const loading = ref(false);
-const error = ref('');
 
 const form = reactive({ account: '', password: '' });
 const phone = reactive({ phone: '', code: '' });
@@ -112,7 +109,6 @@ async function startQr() {
     qrExpired.value = false;
     qrImage.value = '';
     qrScene.value = '';
-    error.value = '';
     try {
         const { data } = await http.post('/auth/wechat/qr');
         qrScene.value = data.scene;
@@ -120,7 +116,7 @@ async function startQr() {
         clearInterval(qrTimer);
         qrTimer = setInterval(pollQr, 2000);
     } catch (e) {
-        error.value = e.response?.data?.message || '生成二维码失败';
+        notifyError(e.response?.data?.message || '生成二维码失败');
     }
 }
 
@@ -149,7 +145,6 @@ function stopQr() {
 
 watch(mode, (value) => {
     // 切换登录方式时，旧方式的报错不该留在页面上
-    error.value = '';
     if (value === 'wechat' && useQr.value) {
         startQr();
     } else {
@@ -169,13 +164,12 @@ function afterLogin() {
 }
 
 async function doLogin() {
-    error.value = '';
     if (!form.account.trim()) {
-        error.value = '请输入账号';
+        notifyError('请输入账号');
         return;
     }
     if (!form.password) {
-        error.value = '请输入密码';
+        notifyError('请输入密码');
         return;
     }
     loading.value = true;
@@ -183,26 +177,23 @@ async function doLogin() {
         await auth.login(form.account, form.password);
         if (auth.isStaff && !redirectTo) {
             await auth.logout();
-            error.value = '该账号为客服/管理员，请从后台入口登录';
+            notifyError('该账号为客服/管理员，请从后台入口登录');
             return;
         }
         afterLogin();
     } catch (e) {
-        error.value = e.response?.data?.message || '登录失败';
+        notifyError(e.response?.data?.message || '登录失败');
     } finally {
         loading.value = false;
     }
 }
 
 async function sendPhoneCode() {
-    error.value = '';
     if (!/^1[3-9]\d{9}$/.test(phone.phone)) {
-        // 用页面内提示，不用会自动消失的 toast，避免“一闪没了”
-        error.value = '请输入 11 位手机号，例如 13800138000';
+        notifyError('请输入 11 位手机号，例如 13800138000');
         return;
     }
     phoneSending.value = true;
-    error.value = '';
     try {
         await http.post('/auth/phone/code', { phone: phone.phone });
         ElMessage.success('验证码已发送');
@@ -213,20 +204,19 @@ async function sendPhoneCode() {
             if (countdown.value <= 0) clearInterval(countdownTimer);
         }, 1000);
     } catch (e) {
-        error.value = e.response?.data?.message || '验证码发送失败';
+        notifyError(e.response?.data?.message || '验证码发送失败');
     } finally {
         phoneSending.value = false;
     }
 }
 
 async function doPhoneLogin() {
-    error.value = '';
     if (!/^1[3-9]\d{9}$/.test(phone.phone)) {
-        error.value = '请输入 11 位手机号，例如 13800138000';
+        notifyError('请输入 11 位手机号，例如 13800138000');
         return;
     }
     if (!/^\d{6}$/.test(phone.code)) {
-        error.value = '请输入手机收到的 6 位验证码';
+        notifyError('请输入手机收到的 6 位验证码');
         return;
     }
     loading.value = true;
@@ -234,7 +224,7 @@ async function doPhoneLogin() {
         await auth.loginWithPhone(phone.phone, phone.code);
         afterLogin();
     } catch (e) {
-        error.value = e.response?.data?.message || '登录失败';
+        notifyError(e.response?.data?.message || '登录失败');
     } finally {
         loading.value = false;
     }
@@ -242,14 +232,13 @@ async function doPhoneLogin() {
 
 async function doWechatLogin() {
     wechatLoading.value = true;
-    error.value = '';
     try {
         const { data } = await http.get('/auth/wechat/url');
         sessionStorage.setItem('wechat_state', data.state);
         sessionStorage.setItem('wechat_redirect', redirectTo || '');
         window.location.href = data.url;
     } catch (e) {
-        error.value = e.response?.data?.message || '微信登录暂不可用';
+        notifyError(e.response?.data?.message || '微信登录暂不可用');
         wechatLoading.value = false;
     }
 }

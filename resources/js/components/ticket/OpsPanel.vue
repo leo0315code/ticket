@@ -37,6 +37,7 @@
 <script setup>
 import { reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../../notify';
 import http from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import { STATUS_MAP, PRIORITY_MAP } from '../../constants';
@@ -72,7 +73,7 @@ async function save() {
         emit('saved', data);
         ElMessage.success('已保存');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '保存失败');
+        notifyError(e.response?.data?.message || '保存失败');
     } finally {
         saving.value = false;
     }

@@ -100,6 +100,7 @@
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../notify';
 import http from '../api';
 import { connectRealtime } from '../realtime';
 import { useAuthStore } from '../stores/auth';
@@ -167,7 +168,7 @@ async function loadEarlier() {
         const older = (data.data || []).filter((r) => !known.has(r.id));
         olderReplies.value = [...older, ...olderReplies.value];
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '加载更早的回复失败');
+        notifyError(e.response?.data?.message || '加载更早的回复失败');
     } finally {
         loadingEarlier.value = false;
     }
@@ -184,7 +185,7 @@ async function reopen() {
         ticket.value = { ...ticket.value, ...data };
         ElMessage.success('工单已重新打开，客服会尽快跟进');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '重新打开失败');
+        notifyError(e.response?.data?.message || '重新打开失败');
     } finally {
         reopening.value = false;
     }
@@ -200,7 +201,7 @@ async function submitRating() {
         ticket.value = { ...ticket.value, ...data };
         ElMessage.success('感谢您的评价');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '评价失败');
+        notifyError(e.response?.data?.message || '评价失败');
     } finally {
         ratingSaving.value = false;
     }

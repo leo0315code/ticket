@@ -173,6 +173,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../notify';
 import http from '../api';
 import { loadMeta } from '../meta';
 
@@ -226,7 +227,7 @@ const testing = ref(false);
 
 async function sendTest() {
     if (!/^1[3-9]\d{9}$/.test(testPhone.value)) {
-        ElMessage.warning('请输入正确的手机号');
+        notifyError('请输入正确的手机号');
         return;
     }
     testing.value = true;
@@ -234,7 +235,7 @@ async function sendTest() {
         const { data } = await http.post('/settings/sms-test', { phone: testPhone.value });
         ElMessage.success(data.message || '已发送');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '发送失败');
+        notifyError(e.response?.data?.message || '发送失败');
     } finally {
         testing.value = false;
     }
@@ -246,7 +247,7 @@ async function load() {
         const { data } = await http.get('/settings');
         Object.assign(form, data);
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '加载设置失败');
+        notifyError(e.response?.data?.message || '加载设置失败');
     } finally {
         loading.value = false;
     }
@@ -265,7 +266,7 @@ async function save() {
         await loadMeta();
         ElMessage.success('设置已保存');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '保存失败');
+        notifyError(e.response?.data?.message || '保存失败');
     } finally {
         saving.value = false;
     }

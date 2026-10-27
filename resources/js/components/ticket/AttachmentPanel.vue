@@ -31,6 +31,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../../notify';
 import { Document } from '@element-plus/icons-vue';
 import http from '../../api';
 import { loadMeta, meta } from '../../meta';
@@ -87,7 +88,7 @@ async function upload({ file }) {
         ElMessage.success('附件已上传');
         emit('change');
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '上传失败');
+        notifyError(e.response?.data?.message || '上传失败');
     } finally {
         uploading.value = false;
     }

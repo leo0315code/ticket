@@ -151,6 +151,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
 import { ElMessage } from 'element-plus';
+import { notifyError } from '../notify';
 import http from '../api';
 import { avatarColor } from '../utils/avatar';
 import { useAuthStore } from '../stores/auth';
@@ -193,7 +194,7 @@ async function restore(row) {
         ElMessage.success('已恢复到工单列表');
         await load();
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '恢复失败');
+        notifyError(e.response?.data?.message || '恢复失败');
     } finally {
         restoring.value = 0;
     }
@@ -218,7 +219,7 @@ async function bulkAction(action) {
         bulkAgentId.value = '';
         await load();
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '操作失败');
+        notifyError(e.response?.data?.message || '操作失败');
     } finally {
         bulkLoading.value = false;
     }

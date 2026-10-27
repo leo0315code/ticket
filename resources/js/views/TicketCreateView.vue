@@ -62,7 +62,6 @@
                 <b>@用户名</b> 可提醒相关同事。
             </template>
         </el-alert>
-        <el-alert v-if="error" :title="error" type="error" :closable="false" style="margin-top: 12px" />
     </el-card>
 </template>
 
@@ -102,7 +101,6 @@ const router = useRouter();
 const route = useRoute();
 const auth = useAuthStore();
 const loading = ref(false);
-const error = ref('');
 const categories = ref([]);
 const form = reactive({ title: '', content: '', priority: 'medium', category_id: '' });
 
@@ -114,11 +112,10 @@ onMounted(async () => {
 
 async function submit() {
     if (!form.title || !form.content || !form.category_id) {
-        error.value = '请填写标题、内容并选择分类';
+        notifyError('请填写标题、内容并选择分类');
         return;
     }
     loading.value = true;
-    error.value = '';
     try {
         const { data } = await http.post('/tickets', {
             ...form,
@@ -135,7 +132,7 @@ async function submit() {
                     await http.post(`/tickets/${data.id}/attachments`, fd);
                     ok++;
                 } catch (e) {
-                    ElMessage.warning(`附件「${f.name}」上传失败，可稍后在工单详情中补传`);
+                    notifyError(`附件「${f.name}」上传失败，可稍后在工单详情中补传`);
                 }
             }
             if (ok > 0) ElMessage.success(`${ok} 个附件已上传`);
@@ -143,7 +140,7 @@ async function submit() {
         ElMessage.success(`工单 ${data.no} 创建成功`);
         router.push(auth.isStaff && !route.path.startsWith('/m') ? ticketPath(data.id) : `/m/tickets/${data.id}`);
     } catch (e) {
-        error.value = e.response?.data?.message || '提交失败';
+        notifyError(e.response?.data?.message || '提交失败');
     } finally {
         loading.value = false;
     }

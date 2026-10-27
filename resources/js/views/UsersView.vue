@@ -204,6 +204,7 @@
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { notifyError } from '../notify';
 import http from '../api';
 import { adminPath } from '../paths';
 import { STATUS_MAP } from '../constants';
@@ -296,7 +297,7 @@ function openCreate() {
 
 async function create() {
     if (! createForm.name || ! createForm.username || ! createForm.password) {
-        ElMessage.warning('请填写姓名、账号和初始密码');
+        notifyError('请填写姓名、账号和初始密码');
         return;
     }
     creating.value = true;
@@ -307,7 +308,7 @@ async function create() {
         await load(1);
     } catch (e) {
         const errors = e.response?.data?.errors;
-        ElMessage.error(errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || '创建失败'));
+        notifyError(errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || '创建失败'));
     } finally {
         creating.value = false;
     }
@@ -337,7 +338,7 @@ async function saveEdit() {
         ElMessage.success('已保存');
         await load();
     } catch (e) {
-        ElMessage.error(e.response?.data?.message || '保存失败');
+        notifyError(e.response?.data?.message || '保存失败');
     } finally {
         saving.value = false;
     }

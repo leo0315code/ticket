@@ -21,7 +21,10 @@ return [
     // TLS：默认随 mode（direct 读 GATEWAY_SSL / proxy 恒 false），可用 GATEWAY_SSL 覆盖
     'ssl' => env('GATEWAY_SSL'),
     // 前端实际连接的 WebSocket 地址（注入 blade；proxy 模式如 wss://your-domain/im）
-    'public_ws_url' => env('GATEWAY_PUBLIC_WS_URL', 'ws://127.0.0.1:1238'),
+    // 留空 = 自动用「当前站点 + public_ws_path」，https 页面自动变 wss（推荐配合 nginx 反代 /ws）
+    'public_ws_url' => env('GATEWAY_PUBLIC_WS_URL') ?: null,
+    // 未显式配置 public_ws_url 时的同源路径
+    'public_ws_path' => env('GATEWAY_PUBLIC_WS_PATH', '/ws'),
 
     // wss 证书（direct + GATEWAY_SSL=true 时必填）
     'ssl_cert' => env('GATEWAY_SSL_CERT'),

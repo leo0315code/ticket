@@ -17,7 +17,6 @@
                 </template>
                 <template v-else>
                     <el-button size="small" @click="$router.push('/login')">登录 / 注册</el-button>
-                    <el-button size="small" text @click="$router.push(adminLoginPath)">客服入口</el-button>
                 </template>
             </div>
         </header>
@@ -97,7 +96,6 @@ import { useAuthStore } from '../stores/auth';
 import { adminPath } from '../paths';
 import { isDark, toggleTheme } from '../theme';
 
-const adminLoginPath = adminPath('login');
 const router = useRouter();
 const auth = useAuthStore();
 const site = meta();

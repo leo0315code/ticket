@@ -69,6 +69,26 @@ GATEWAY_PUBLIC_WS_URL=wss://t.test:1238
 
 证书续期/换域名后记得同步改路径和地址。
 
+## ServBay 本地环境注意
+
+ServBay 的 vhost 文件（`/Applications/ServBay/etc/nginx/vhosts/*.conf`）是**自动生成**的，
+改了之后只要在 ServBay 里保存一次站点配置就会被覆盖，所以不要在 `t.test.conf` 里手工加 `location /ws` 当长期方案。
+
+两个可行做法：
+
+**做法 1：给 WS 单独开一个反向代理站点（推荐，改动最小且持久）**
+
+1. ServBay → 网站 → 新增网站 → 类型选「反向代理」，域名填 `ws.t.test`，目标 `http://127.0.0.1:1238`；
+2. `.env` 里 `GATEWAY_MODE=proxy`、`GATEWAY_PUBLIC_WS_URL=wss://ws.t.test`（不带端口）；
+3. `php artisan gateway:start --restart`；
+4. 浏览器连 `wss://ws.t.test?token=...`，证书由 ServBay 为 `ws.t.test` 签，同一个根证书信任一次即可。
+
+**做法 2：坚持同源 `/ws`**
+
+把方案 A 的 `location /ws` 手工加进 `t.test.conf`，能用；但 ServBay 重新生成配置后会丢，
+需要重新粘贴（或把这段存成 snippet 备用）。日志里客户端 IP 会变成 `127.0.0.1`，如需真实 IP
+要在 nginx 侧透传并由网关读取 `X-Forwarded-For`（当前网关未实现，鉴权不依赖 IP，一般可忽略）。
+
 ## 排查清单
 
 - 网关是否在跑：`php artisan gateway:start --status`，或 `lsof -nP -iTCP:1238 -sTCP:LISTEN`

@@ -1,8 +1,8 @@
 <template>
     <div v-if="ticket" class="detail">
-        <el-page-header @back="$router.back()" style="margin-bottom: 16px">
+        <el-page-header @back="$router.back()" :style="isMobile ? 'margin-bottom: 10px' : 'margin-bottom: 16px'">
             <template #content>
-                <span style="font-weight: 600">{{ ticket.no }} · {{ ticket.title }}</span>
+                <span class="head-title">{{ ticket.no }} · {{ ticket.title }}</span>
             </template>
             <template #extra>
                 <el-button v-if="canReopen" type="warning" plain size="small" :loading="reopening" @click="reopen">
@@ -11,10 +11,10 @@
             </template>
         </el-page-header>
 
-        <el-row :gutter="16">
+        <el-row :gutter="isMobile ? 0 : 16">
             <el-col :xs="24" :sm="16">
                 <el-card>
-                    <el-descriptions :column="3" border size="small" style="margin-bottom: 16px">
+                    <el-descriptions :column="isMobile ? 2 : 3" border size="small" style="margin-bottom: 14px">
                         <el-descriptions-item label="状态">
                             <el-tag :type="STATUS_MAP[ticket.status].type" size="small">{{ STATUS_MAP[ticket.status].label }}</el-tag>
                         </el-descriptions-item>
@@ -124,6 +124,8 @@ const ACTION_LABELS = {
 
 const route = useRoute();
 const auth = useAuthStore();
+const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
+window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMobile.value = e.matches; });
 const ticket = ref(null);
 const categories = ref([]);
 const agents = ref([]);
@@ -242,6 +244,35 @@ watch(() => route.params.id, (id) => {
 </script>
 
 <style scoped>
+.head-title {
+    font-weight: 600;
+    display: inline-block;
+    max-width: 60vw;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    vertical-align: bottom;
+}
+
+@media (max-width: 768px) {
+    .detail :deep(.el-card__body) {
+        padding: 12px;
+    }
+    .detail :deep(.el-descriptions__cell) {
+        padding: 8px 10px;
+    }
+    .detail :deep(.el-page-header__content) {
+        min-width: 0;
+    }
+    .detail h4 {
+        margin: 12px 0 8px;
+    }
+    .detail .content {
+        font-size: 14px;
+        line-height: 1.7;
+    }
+}
+
 .content {
     white-space: pre-wrap;
     color: var(--el-text-color-primary);

@@ -203,6 +203,25 @@ onMounted(load);
     gap: 8px;
     margin-bottom: 16px;
 }
+@media (max-width: 768px) {
+    .search-bar {
+        flex-direction: column;
+    }
+    .search-bar :deep(.el-select) {
+        width: 100% !important;
+    }
+    .card-header {
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+    .feedback {
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+    .feedback .views {
+        margin-left: 0;
+    }
+}
 .group {
     margin-bottom: 18px;
 }

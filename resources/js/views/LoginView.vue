@@ -58,7 +58,7 @@
                                 </div>
                             </el-form-item>
                             <el-button type="primary" size="large" class="submit" :loading="loading" @click="doPhoneLogin">登 录</el-button>
-                            <div class="tips">手机号需先在「账号设置」中绑定</div>
+                            <div class="tips">未注册的手机号验证通过后会自动创建账号</div>
                         </el-form>
 
                         <div v-else class="wechat-box">

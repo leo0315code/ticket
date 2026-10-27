@@ -15,7 +15,7 @@ use RuntimeException;
 
 /**
  * 备用登录方式：手机号验证码、微信公众号扫码。
- * 现有账号必须先绑定手机号/微信，不支持直接注册（避免绕过注册开关与审核）。
+ * 手机号未注册时自动建号（受「开放注册」开关控制）；微信仍需先绑定已有账号。
  */
 class LoginMethodController extends Controller
 {
@@ -54,8 +54,20 @@ class LoginMethodController extends Controller
         }
 
         $user = User::where('phone', $data['phone'])->first();
+
+        // 手机号没注册过就直接建号：验证码已证明手机号归属，等同于完成注册
         if (! $user) {
-            return response()->json(['message' => '该手机号还未绑定账号，请先用密码登录后在「账号设置」中绑定'], 422);
+            if (! Settings::get('allow_register')) {
+                return response()->json(['message' => '注册已关闭，请联系管理员开通账号'], 403);
+            }
+
+            $user = User::create([
+                'name' => '用户'.substr($data['phone'], -4),
+                'username' => $this->freeUsername($data['phone']),
+                'phone' => $data['phone'],
+                'password' => \Illuminate\Support\Str::random(24),
+                'role' => 'user',
+            ]);
         }
 
         return $this->issueToken($user);
@@ -193,6 +205,20 @@ class LoginMethodController extends Controller
     }
 
     /* ---------------- 内部 ---------------- */
+
+    /** 手机号建号时生成一个不冲突的登录名，如 p13800138000 */
+    private function freeUsername(string $phone): string
+    {
+        $base = 'p'.$phone;
+        $username = $base;
+        $i = 1;
+
+        while (User::where('username', $username)->exists()) {
+            $username = $base.'_'.$i++;
+        }
+
+        return $username;
+    }
 
     private function issueToken(User $user): JsonResponse
     {

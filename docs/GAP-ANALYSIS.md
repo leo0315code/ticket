@@ -876,11 +876,12 @@ faqs                                -- 直接扩，不建 kb_articles
   - 手机号：`POST /api/auth/phone/code` 发送 6 位验证码（缓存存哈希，5 次错误作废，60 秒重发冷却、每日 10 条上限），`POST /api/auth/phone/login` 换 token；短信通道可配为「写日志（联调）」或「HTTP 网关」（POST `{phone, code, content, purpose}`）。
   - 微信：`GET /api/auth/wechat/url` 返回授权地址（开放平台 `qrconnect` 或公众号 `oauth2/authorize`，state 用 HMAC 防 CSRF，10 分钟有效），`POST /api/auth/wechat/login` 用 code 换 openid 后登录；`/wechat/callback` 是前端回调页，登录/绑定共用。
   - 绑定：移动端「我的 → 账号设置」可绑定/更换手机号、扫码绑定/解绑微信；`users` 增加 `wechat_openid/wechat_unionid/wechat_nickname/wechat_avatar`。
-  - 安全：不存在/未绑定的手机号与微信统一返回「未绑定」提示，不泄露账号是否存在；停用账号在任一登录方式下都 403；AppSecret 接口只回显“是否已设置”，留空保存不会覆盖。
+  - 自动注册：手机号验证通过但库里没有该号时直接建号（昵称「用户+后 4 位」、登录名 `p+手机号`、随机密码、角色 user），再次登录复用同一账号；「开放注册」关闭时拒绝自动建号（403），已有账号不受影响。微信仍要求先绑定，避免扫码即建号产生垃圾账号。
+  - 安全：停用账号在任一登录方式下都 403；AppSecret 接口只回显“是否已设置”，留空保存不会覆盖。
 
 ### 13.4 验证
 
-- `php artisan test`：**134 passed / 562 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条、`LoginMethodTest` 14 条）。
+- `php artisan test`：**135 passed / 574 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条、`LoginMethodTest` 15 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
 - 新增迁移 10 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 - 权限约定：接口用 `permission:key` 中间件，前端用 `auth.can('key')`；新增敏感接口时两处都要加。
@@ -925,7 +926,7 @@ faqs                                -- 直接扩，不建 kb_articles
 前端无单元测试、无 CI（无 `.github`）、无 Pint/PHPStan 配置；
 WebSocket 仍是直连 `wss://host:1238`（反代方案因 ServBay vhost 自动生成而暂缓，token 仍在 URL）。
 
-### 13.7 登录方式配置（v2.24）
+### 13.7 登录方式配置（v2.24+）
 
 后台「系统设置 → 登录方式」可配置，全部落库，保存即生效，无需改 `.env`：
 
@@ -944,4 +945,4 @@ WebSocket 仍是直连 `wss://host:1238`（反代方案因 ServBay vhost 自动�
 联调步骤：
 1. 手机号：开启开关 → 选择日志通道 → 登录页输入手机号获取验证码 → `tail -f storage/logs/laravel.log` 查看 6 位码。上线前把通道改成 `http` 并填自己的短信网关。
 2. 微信：开放平台创建「网站应用」→ 填 AppID/AppSecret → 回调域填站点域名 → 手机/微信绑定后即可扫码登录。
-3. 用户必须先绑定手机号/微信才能用对应方式登录，不支持直接注册，避免绕过注册开关。
+3. 手机号验证通过即自动建号（等同注册），因此「开放注册」关闭时手机号新用户会被拒绝；微信仍需先在「账号设置」里绑定。

@@ -38,7 +38,7 @@
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item label="手机号验证码登录">
                 <el-switch v-model="form.phone_login_enabled" />
-                <span class="hint">开启后登录页出现「手机号验证码」入口，用户需先在账号设置里绑定手机号</span>
+                <span class="hint">开启后登录页出现「手机号验证码」入口；未注册的手机号验证通过后自动建号（受「开放注册」开关控制）</span>
             </el-form-item>
             <el-form-item label="短信通道">
                 <el-select v-model="form.sms_driver" style="width: 180px">

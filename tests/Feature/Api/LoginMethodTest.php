@@ -105,14 +105,40 @@ class LoginMethodTest extends TestCase
             ->assertStatus(422);
     }
 
-    public function test_unbound_phone_cannot_login(): void
+    public function test_unregistered_phone_auto_registers_and_logs_in(): void
     {
         $this->enablePhone();
-        $this->postJson('/api/auth/phone/code', ['phone' => '13900139000']);
+        $this->postJson('/api/auth/phone/code', ['phone' => '13900139000'])->assertOk();
 
-        $this->postJson('/api/auth/phone/login', ['phone' => '13900139000', 'code' => $this->sms->lastCode()])
-            ->assertStatus(422)
-            ->assertJsonPath('message', '该手机号还未绑定账号，请先用密码登录后在「账号设置」中绑定');
+        $response = $this->postJson('/api/auth/phone/login', ['phone' => '13900139000', 'code' => $this->sms->lastCode()])
+            ->assertOk()
+            ->assertJsonPath('user.role', 'user')
+            ->assertJsonPath('user.has_phone', true);
+
+        $user = User::where('phone', '13900139000')->firstOrFail();
+        $this->assertSame($user->id, $response->json('user.id'));
+        $this->assertSame('用户9000', $user->name);
+        $this->assertSame('p13900139000', $user->username);
+
+        // 同一个手机号再次登录走同一个账号，不会重复建号
+        $this->assertSame(1, User::where('phone', '13900139000')->count());
+        $this->withHeader('Authorization', 'Bearer '.$response->json('token'))
+            ->getJson('/api/me')
+            ->assertOk()
+            ->assertJsonPath('user.id', $user->id);
+    }
+
+    public function test_register_closed_blocks_phone_auto_register(): void
+    {
+        $this->enablePhone();
+        Settings::put(['allow_register' => false]);
+        $this->postJson('/api/auth/phone/code', ['phone' => '13900139001'])->assertOk();
+
+        $this->postJson('/api/auth/phone/login', ['phone' => '13900139001', 'code' => $this->sms->lastCode()])
+            ->assertStatus(403)
+            ->assertJsonPath('message', '注册已关闭，请联系管理员开通账号');
+
+        $this->assertDatabaseMissing('users', ['phone' => '13900139001']);
     }
 
     public function test_inactive_user_cannot_login_by_phone(): void

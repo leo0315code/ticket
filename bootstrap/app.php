@@ -19,6 +19,13 @@ return Application::configure(basePath: dirname(__DIR__))
         // API 未认证时直接抛 AuthenticationException（由异常渲染返回 401 JSON），不重定向
         $middleware->redirectGuestsTo(fn () => null);
 
+        // 反向代理/负载均衡后取真实协议与 IP（nginx 反代时配 TRUSTED_PROXIES=127.0.0.1 或 *）
+        if ($proxies = env('TRUSTED_PROXIES')) {
+            $middleware->trustProxies(at: $proxies === '*' ? '*' : explode(',', $proxies));
+        }
+
+        $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
+
         $middleware->alias([
             'staff' => \App\Http\Middleware\EnsureUserIsStaff::class,
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,

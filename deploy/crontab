@@ -1,0 +1,2 @@
+# 定时任务：调度器每分钟触发（队列 worker 与网关用 supervisor 常驻，不要放这里）
+* * * * * www-data cd /var/www/ticket && php artisan schedule:run >> /dev/null 2>&1

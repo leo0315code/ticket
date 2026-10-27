@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketExportController;
+use App\Http\Controllers\Api\HealthController;
 use App\Http\Controllers\Api\WeChatQrController;
 use App\Http\Controllers\Api\WsTicketController;
 use App\Http\Controllers\Api\SettingsController;
@@ -31,6 +32,8 @@ Route::post('/captcha/verify', [CaptchaController::class, 'verify'])->middleware
 Route::get('/meta', [MetaController::class, 'show'])->middleware('throttle:120,1');
 
 // 备用登录方式（开关在后台「系统设置 → 登录方式」）
+Route::get('/health', HealthController::class)->middleware('throttle:120,1');
+
 Route::post('/auth/phone/code', [LoginMethodController::class, 'phoneCode'])->middleware('throttle:5,1');
 Route::post('/auth/phone/login', [LoginMethodController::class, 'phoneLogin'])->middleware('throttle:10,1');
 Route::get('/auth/wechat/url', [LoginMethodController::class, 'wechatUrl'])->middleware('throttle:30,1');

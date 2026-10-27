@@ -7,3 +7,5 @@ Schedule::command('tickets:check-sla')->everyFiveMinutes();
 
 // 待确认满 7 天自动关闭（每天凌晨 2 点）
 Schedule::command('tickets:auto-close')->dailyAt('02:00');
+
+Schedule::command('system:backup')->dailyAt('03:10');

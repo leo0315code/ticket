@@ -36,6 +36,9 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
     // 工单：可见性由 TicketPolicy 控制（客户只看自己的）
     Route::get('tickets/export', [TicketExportController::class, 'index'])->middleware('permission:ticket.export');
     Route::post('tickets/bulk', [TicketController::class, 'bulk'])->middleware('staff');
+    // 回收站：软删除工单的查看与恢复（需删除权限）
+    Route::get('tickets/trash', [TicketController::class, 'trash'])->middleware('permission:ticket.delete');
+    Route::post('tickets/{id}/restore', [TicketController::class, 'restore'])->middleware('permission:ticket.delete');
     Route::apiResource('tickets', TicketController::class);
     Route::post('/tickets/{ticket}/rating', [TicketController::class, 'rate']);
     Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen']);

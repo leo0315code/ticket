@@ -19,8 +19,11 @@
             <div class="card-header">
                 <span>工单列表</span>
                 <div>
-                    <el-button v-if="auth.isStaff" :loading="exporting" @click="exportCsv">导出 CSV</el-button>
-                    <el-button type="primary" @click="$router.push(adminPath('tickets/new'))">新建工单</el-button>
+                    <el-button v-if="auth.can('ticket.delete')" link :type="trashMode ? 'primary' : 'warning'" @click="toggleTrash">
+                        {{ trashMode ? '返回工单列表' : '回收站' }}
+                    </el-button>
+                    <el-button v-if="auth.isStaff && ! trashMode" :loading="exporting" @click="exportCsv">导出 CSV</el-button>
+                    <el-button v-if="! trashMode" type="primary" @click="$router.push(adminPath('tickets/new'))">新建工单</el-button>
                 </div>
             </div>
         </template>
@@ -43,25 +46,25 @@
             <el-form-item label="关键字">
                 <el-input v-model="filters.keyword" placeholder="标题 / 工单号" clearable @keyup.enter="load(1)" style="width: 180px" />
             </el-form-item>
-            <el-form-item label="状态">
+            <el-form-item v-if="! trashMode" label="状态">
                 <el-select v-model="filters.status" placeholder="全部" clearable style="width: 120px">
                     <el-option v-for="(v, k) in STATUS_MAP" :key="k" :label="v.label" :value="k" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="优先级">
+            <el-form-item v-if="! trashMode" label="优先级">
                 <el-select v-model="filters.priority" placeholder="全部" clearable style="width: 120px">
                     <el-option v-for="(v, k) in PRIORITY_MAP" :key="k" :label="v.label" :value="k" />
                 </el-select>
             </el-form-item>
-            <el-form-item label="分类">
+            <el-form-item v-if="! trashMode" label="分类">
                 <el-select v-model="filters.category_id" placeholder="全部" clearable style="width: 140px">
                     <el-option v-for="c in categories" :key="c.id" :label="c.name" :value="c.id" />
                 </el-select>
             </el-form-item>
-            <el-form-item v-if="auth.isStaff">
+            <el-form-item v-if="auth.isStaff && ! trashMode">
                 <el-checkbox v-model="filters.mine" label="只看我受理的" />
             </el-form-item>
-            <el-form-item v-if="auth.isStaff">
+            <el-form-item v-if="auth.isStaff && ! trashMode">
                 <el-checkbox v-model="filters.overdue" label="只看已超时" @change="load(1)" />
             </el-form-item>
             <el-form-item>
@@ -70,7 +73,7 @@
             </el-form-item>
         </el-form>
 
-        <div v-if="selection.length > 0" class="bulk-bar">
+        <div v-if="selection.length > 0 && ! trashMode" class="bulk-bar">
             <span>已选 {{ selection.length }} 项</span>
             <el-popconfirm :title="`确认关闭选中的 ${selection.length} 张工单？`" @confirm="bulkAction('close')">
                 <template #reference>
@@ -84,11 +87,12 @@
         </div>
 
         <el-table :data="tickets" v-loading="loading" stripe @selection-change="(rows) => (selection = rows)">
-            <el-table-column v-if="auth.isStaff" type="selection" width="42" />
+            <el-table-column v-if="auth.isStaff && ! trashMode" type="selection" width="42" />
             <el-table-column prop="no" label="工单号" width="160" class-name="hide-md" />
             <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip>
                 <template #default="{ row }">
-                    <el-link type="primary" @click="$router.push(`/tickets/${row.id}`)">{{ row.title }}</el-link>
+                    <el-link v-if="! trashMode" type="primary" @click="$router.push(`/tickets/${row.id}`)">{{ row.title }}</el-link>
+                    <span v-else>{{ row.title }}</span>
                 </template>
             </el-table-column>
             <el-table-column label="状态" width="140">
@@ -124,6 +128,12 @@
             </el-table-column>
             <el-table-column prop="replies_count" label="回复" width="70" align="center" class-name="hide-md" />
             <el-table-column prop="created_at" label="创建时间" width="150" class-name="hide-sm" />
+            <el-table-column v-if="trashMode" prop="deleted_at" label="删除时间" width="150" />
+            <el-table-column v-if="trashMode" label="操作" width="90" fixed="right">
+                <template #default="{ row }">
+                    <el-button link type="primary" :loading="restoring === row.id" @click="restore(row)">恢复</el-button>
+                </template>
+            </el-table-column>
         </el-table>
 
         <el-pagination
@@ -166,6 +176,28 @@ const selection = ref([]);
 const agents = ref([]);
 const bulkAgentId = ref('');
 const bulkLoading = ref(false);
+const trashMode = ref(false);
+const restoring = ref(0);
+
+function toggleTrash() {
+    trashMode.value = ! trashMode.value;
+    selection.value = [];
+    page.value = 1;
+    load(1);
+}
+
+async function restore(row) {
+    restoring.value = row.id;
+    try {
+        await http.post(`/tickets/${row.id}/restore`);
+        ElMessage.success('已恢复到工单列表');
+        await load();
+    } catch (e) {
+        ElMessage.error(e.response?.data?.message || '恢复失败');
+    } finally {
+        restoring.value = 0;
+    }
+}
 
 async function loadAgents() {
     if (! auth.isStaff) return;
@@ -266,6 +298,16 @@ async function exportCsv() {
 async function load(p = page.value) {
     loading.value = true;
     page.value = p;
+    if (trashMode.value) {
+        try {
+            const { data } = await http.get('/tickets/trash', { params: { page: p, keyword: filters.keyword || undefined } });
+            tickets.value = data.data;
+            total.value = data.meta.total;
+        } finally {
+            loading.value = false;
+        }
+        return;
+    }
     try {
         const params = {
             page: p,

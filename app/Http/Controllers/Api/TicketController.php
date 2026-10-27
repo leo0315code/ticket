@@ -304,4 +304,28 @@ class TicketController extends Controller
 
         return response()->json(['message' => '工单已删除']);
     }
+
+    /** 回收站：只列软删除的工单（需 ticket.delete 权限） */
+    public function trash(Request $request): AnonymousResourceCollection
+    {
+        $perPage = min(100, max(1, $request->integer('per_page', 20)));
+        $tickets = Ticket::onlyTrashed()
+            ->filter($request->only(['keyword']))
+            ->with(['user:id,name', 'agent:id,name', 'category:id,name'])
+            ->orderByDesc('deleted_at')
+            ->paginate($perPage);
+
+        return TicketResource::collection($tickets);
+    }
+
+    /** 从回收站恢复工单 */
+    public function restore(Request $request, int $id): JsonResponse
+    {
+        $ticket = Ticket::onlyTrashed()->findOrFail($id);
+        $ticket->restore();
+        $ticket->forceFill(['last_activity_at' => now()])->save();
+        $ticket->log('restored', $request->user()->id, '从回收站恢复');
+
+        return response()->json(['message' => '工单已恢复']);
+    }
 }

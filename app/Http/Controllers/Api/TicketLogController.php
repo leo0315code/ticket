@@ -24,7 +24,7 @@ class TicketLogController extends Controller
             });
 
         return TicketLogResource::collection(
-            $query->paginate($request->integer('per_page', 20))
+            $query->paginate(min(100, max(1, $request->integer('per_page', 20))))
         )->additional([
             'meta.actions' => TicketLog::distinct()->pluck('action')->values(),
         ]);

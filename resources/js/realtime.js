@@ -82,8 +82,8 @@ export function connectRealtime(onMessage) {
     };
 }
 
-export async function fetchNotifications() {
-    const { data } = await http.get('/notifications');
+export async function fetchNotifications(page = 1) {
+    const { data } = await http.get('/notifications', { params: { page } });
 
     return data;
 }

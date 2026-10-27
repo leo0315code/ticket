@@ -873,9 +873,9 @@ faqs                                -- 直接扩，不建 kb_articles
 
 ### 13.4 验证
 
-- `php artisan test`：**105 passed / 465 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 8 条、`TicketScopeTest` 6 条）。
+- `php artisan test`：**111 passed / 488 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 8 条、`TicketScopeTest` 6 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
-- 新增迁移 8 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
+- 新增迁移 9 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 - 权限约定：接口用 `permission:key` 中间件，前端用 `auth.can('key')`；新增敏感接口时两处都要加。
 
 ### 13.5 仍建议后续
@@ -886,14 +886,14 @@ faqs                                -- 直接扩，不建 kb_articles
 
 ### 13.6 尚未做（按 2026-10-27 代码现状盘点）
 
-**A. 已知缺陷/埋雷**
+**A. 已修复（2026-10-27，v2.22）**
 
-| 项 | 现状 | 影响 |
-|---|---|---|
-| 用户外键级联 | `tickets/replies/attachments/ticket_logs.user_id` 仍是 `cascadeOnDelete` | 目前没有删用户接口；一旦加「删除账号」会连带物理删除其全部工单 |
-| 工单回收站 | `tickets` 已软删除，但没有 restore 接口/页面 | 误删只能进库改 `deleted_at` |
-| 日志接口分页 | `TicketLogController@index` 的 `per_page` 未夹上限 | 可被 `per_page=100000` 拉全表 |
-| 通知列表 | 只取最近 20 条，无分页/加载更多 | 通知多了看不到更早的 |
+| 项 | 处理 |
+|---|---|
+| 用户外键级联 | 新迁移 `2026_10_27_000009_restrict_user_deletes_on_history_tables.php` 把 `tickets/ticket_replies/attachments/ticket_logs.user_id` 全部改为 `restrict`：删除有历史数据的用户会被数据库拒绝，注销账号请用「停用」 |
+| 工单回收站 | 新增 `GET /api/tickets/trash`（支持关键字 + 分页）与 `POST /api/tickets/{id}/restore`，均需 `ticket.delete` 权限；工单列表右上角“回收站”切换，恢复后写 `restored` 日志；`TicketResource` 暴露 `deleted_at` |
+| 日志接口分页 | `TicketLogController@index` 的 `per_page` 夹到 1–100 |
+| 通知列表 | `GET /api/notifications` 支持 `page`/`per_page`（1–50），返回 `has_more`；通知铃铛底部“加载更多” |
 
 **B. 功能缺口**
 

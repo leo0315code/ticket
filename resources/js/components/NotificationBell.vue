@@ -22,6 +22,9 @@
                     <div class="nf-time">{{ n.created_at }}</div>
                 </div>
             </el-scrollbar>
+            <div v-if="hasMore" class="nf-more">
+                <el-button link type="primary" :loading="loadingMore" @click="load(true)">加载更多</el-button>
+            </div>
         </div>
     </el-popover>
 </template>
@@ -42,11 +45,26 @@ const open = ref(false);
 const route = useRoute();
 const router = useRouter();
 let timer = null;
+const page = ref(1);
+const hasMore = ref(false);
+const loadingMore = ref(false);
 
-async function load() {
-    const data = await fetchNotifications();
-    unread.value = data.unread;
-    items.value = data.data;
+async function load(more = false) {
+    loadingMore.value = more;
+    try {
+        const data = await fetchNotifications(more ? page.value + 1 : 1);
+        if (more) {
+            page.value += 1;
+            items.value.push(...data.data);
+        } else {
+            page.value = 1;
+            items.value = data.data;
+        }
+        unread.value = data.unread;
+        hasMore.value = !! data.has_more;
+    } finally {
+        loadingMore.value = false;
+    }
 }
 
 // 即时消息：网关推送的通知实时刷角标 + 弹 toast（正在查看的工单不弹，由聊天区实时追加）
@@ -126,5 +144,9 @@ defineExpose({ load });
     font-size: 12px;
     color: #909399;
     margin-top: 2px;
+}
+.nf-more {
+    text-align: center;
+    padding-top: 8px;
 }
 </style>

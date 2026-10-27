@@ -24,17 +24,24 @@ class Events
     public static function onWebSocketConnect($client_id, $data)
     {
         $token = $data['get']['token'] ?? '';
-        $userId = self::resolveUser($token);
+        $user = self::resolveUser($token);
 
-        if (! $userId) {
+        if (! $user) {
+            // token 无效 / 已过期 / 账号已停用，统一拒绝，不泄露具体原因
             Gateway::sendToClient($client_id, json_encode(['type' => 'auth_failed']));
             Gateway::closeClient($client_id);
 
             return;
         }
 
-        Gateway::bindUid($client_id, 'u'.$userId);
-        Gateway::sendToClient($client_id, json_encode(['type' => 'connected', 'user_id' => $userId]));
+        Gateway::bindUid($client_id, 'u'.$user['id']);
+        // 带上角色，前端/网关都能据此区分前台用户与后台坐席
+        Gateway::sendToClient($client_id, json_encode([
+            'type' => 'connected',
+            'user_id' => $user['id'],
+            'role' => $user['role'],
+            'is_staff' => $user['is_staff'],
+        ]));
     }
 
     public static function onMessage($client_id, $message)
@@ -49,8 +56,11 @@ class Events
     {
     }
 
-    /** 校验 Sanctum token（格式 "id|明文"，与 Laravel 校验逻辑一致），返回 user_id 或 null */
-    private static function resolveUser(string $token): ?int
+    /**
+     * 校验 Sanctum token（格式 "id|明文"，与 Laravel 校验逻辑一致）
+     * 同时校验 token 是否过期、账号是否已停用；返回用户信息或 null。
+     */
+    private static function resolveUser(string $token): ?array
     {
         if (! str_contains($token, '|')) {
             return null;
@@ -60,14 +70,49 @@ class Events
 
         try {
             $st = self::pdo()->prepare(
-                'SELECT tokenable_id FROM personal_access_tokens WHERE id = ? AND token = ?'
+                'SELECT p.tokenable_id AS uid, p.expires_at, u.role, u.is_active
+                   FROM personal_access_tokens p
+                   JOIN users u ON u.id = p.tokenable_id
+                  WHERE p.id = ? AND p.token = ?'
             );
             $st->execute([(int) $id, hash('sha256', $plain)]);
-            $uid = $st->fetchColumn();
+            $row = $st->fetch(PDO::FETCH_ASSOC);
 
-            return $uid ? (int) $uid : null;
+            if (! $row) {
+                return null;
+            }
+
+            // token 过期（Sanctum 默认 30 天）或账号停用，都不允许建立实时连接
+            $expired = $row['expires_at'] !== null && strtotime($row['expires_at']) <= time();
+            if ($expired || (int) $row['is_active'] !== 1) {
+                return null;
+            }
+
+            return [
+                'id' => (int) $row['uid'],
+                'role' => (string) $row['role'],
+                'is_staff' => self::isStaffRole((string) $row['role']),
+            ];
         } catch (Throwable $e) {
             return null;
+        }
+    }
+
+    /** 角色是否属于后台坐席（以 roles 表的 panel.access 权限为准，兼容自定义角色） */
+    private static function isStaffRole(string $role): bool
+    {
+        if (in_array($role, ['agent', 'admin'], true)) {
+            return true;
+        }
+
+        try {
+            $st = self::pdo()->prepare('SELECT permissions FROM roles WHERE name = ?');
+            $st->execute([$role]);
+            $permissions = json_decode((string) $st->fetchColumn(), true) ?: [];
+
+            return in_array('panel.access', $permissions, true) || in_array('*', $permissions, true);
+        } catch (Throwable $e) {
+            return false;
         }
     }
 

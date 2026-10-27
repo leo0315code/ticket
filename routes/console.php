@@ -9,3 +9,4 @@ Schedule::command('tickets:check-sla')->everyFiveMinutes();
 Schedule::command('tickets:auto-close')->dailyAt('02:00');
 
 Schedule::command('system:backup')->dailyAt('03:10');
+Schedule::command('attachments:prune')->weeklyOn(1, '04:20');

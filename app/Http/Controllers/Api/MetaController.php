@@ -15,6 +15,7 @@ class MetaController extends Controller
             'site_name' => Settings::get('site_name'),
             'allow_register' => (bool) Settings::get('allow_register'),
             'attach_max_mb' => (int) Settings::get('attach_max_mb'),
+            'attach_max_count' => (int) Settings::get('attach_max_count'),
             'phone_login_enabled' => (bool) Settings::get('phone_login_enabled'),
             'wechat_login_enabled' => (bool) Settings::get('wechat_login_enabled'),
             'wechat_mode' => (string) Settings::get('wechat_mode', 'open'),

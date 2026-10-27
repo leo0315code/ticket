@@ -32,6 +32,14 @@
                 <el-input-number v-model="form.attach_max_mb" :min="1" :max="100" />
                 <span class="hint">MB</span>
             </el-form-item>
+            <el-form-item label="每单附件数量">
+                <el-input-number v-model="form.attach_max_count" :min="1" :max="50" />
+                <span class="hint">个</span>
+            </el-form-item>
+            <el-form-item label="每单附件总容量">
+                <el-input-number v-model="form.attach_quota_mb" :min="0" :max="10240" :step="100" />
+                <span class="hint">MB，0 = 不限</span>
+            </el-form-item>
         </el-form>
 
         <h4 class="section">登录方式</h4>
@@ -191,6 +199,8 @@ const form = reactive({
     allow_register: true,
     notify_mail: true,
     attach_max_mb: 10,
+    attach_max_count: 10,
+    attach_quota_mb: 0,
     sla_hours: { urgent: 4, high: 8, medium: 24, low: 72 },
     auto_close_days: 7,
     reopen_days: 14,

@@ -15,7 +15,7 @@ class SystemBackup extends Command
 {
     protected $signature = 'system:backup {--keep-days=14} {--dir=}';
 
-    protected $description = '备份 MySQL/SQLite 数据库与 storage/app/public 附件';
+    protected $description = '备份 MySQL/SQLite 数据库与 storage/app 下的附件';
 
     public function handle(): int
     {
@@ -104,12 +104,13 @@ class SystemBackup extends Command
 
     private function backupAttachments(string $dir, string $stamp): bool
     {
-        $source = storage_path('app/public');
+        // 附件默认落在 storage/app/private/attachments（local 盘），public 盘也可能有历史文件，一并打包
+        $source = storage_path('app');
         if (! is_dir($source)) {
             return false;
         }
 
-        $target = "{$dir}/storage-public-{$stamp}.tar.gz";
+        $target = "{$dir}/storage-app-{$stamp}.tar.gz";
         $process = new Process(['tar', '-czf', $target, '-C', $source, '.']);
         $process->setTimeout(600);
         $process->run();
@@ -131,7 +132,7 @@ class SystemBackup extends Command
 
         $files = array_merge(
             glob("{$dir}/db-*.sql.gz") ?: [],
-            glob("{$dir}/storage-public-*.tar.gz") ?: [],
+            glob("{$dir}/storage-app-*.tar.gz") ?: [],
         );
 
         foreach ($files as $file) {

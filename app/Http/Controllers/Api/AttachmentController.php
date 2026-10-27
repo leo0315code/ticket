@@ -18,6 +18,16 @@ class AttachmentController extends Controller
 
         // 上限由后台「系统设置 → 附件大小」控制（KB）
         $maxKb = max(1, (int) Settings::get('attach_max_mb', 10)) * 1024;
+        $maxCount = max(1, (int) Settings::get('attach_max_count', 10));
+        abort_if($ticket->attachments()->count() >= $maxCount, 422, "每张工单最多上传 {$maxCount} 个附件");
+
+        $quotaMb = (int) Settings::get('attach_quota_mb', 0);
+        if ($quotaMb > 0) {
+            $used = (int) $ticket->attachments()->sum('size');
+            $incoming = (int) ($request->file('file')?->getSize() ?? 0);
+            abort_if($used + $incoming > $quotaMb * 1024 * 1024, 422, "该工单附件总容量已达 {$quotaMb}MB 上限，请删除旧附件后再试");
+        }
+
         $data = $request->validate([
             'file' => ['required', 'file', "max:{$maxKb}", 'mimes:jpg,jpeg,png,gif,webp,bmp,pdf,doc,docx,xls,xlsx,csv,txt,zip,rar,7z'],
         ]);

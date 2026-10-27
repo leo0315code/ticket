@@ -45,6 +45,8 @@ class SettingsController extends Controller
             'reopen_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
             'reopen_limit' => ['sometimes', 'integer', 'min:0', 'max:20'],
             'attach_max_mb' => ['sometimes', 'integer', 'min:1', 'max:100'],
+            'attach_max_count' => ['sometimes', 'integer', 'min:1', 'max:50'],
+            'attach_quota_mb' => ['sometimes', 'integer', 'min:0', 'max:10240'],
             'notify_mail' => ['sometimes', 'boolean'],
 
             'phone_login_enabled' => ['sometimes', 'boolean'],

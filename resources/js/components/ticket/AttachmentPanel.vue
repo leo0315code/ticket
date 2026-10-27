@@ -22,9 +22,12 @@
             </div>
         </div>
         <p v-if="ticket.attachments?.length === 0" style="color: #909399; margin: 0 0 8px">暂无附件</p>
-        <el-upload :show-file-list="false" :http-request="upload" multiple>
-            <el-button size="small" :loading="uploading">上传附件（≤{{ maxMb }}MB）</el-button>
+        <el-upload :show-file-list="false" :http-request="upload" multiple :disabled="reachedLimit">
+            <el-button size="small" :loading="uploading" :disabled="reachedLimit">
+                上传附件（≤{{ maxMb }}MB）
+            </el-button>
         </el-upload>
+        <p v-if="reachedLimit" class="hint">已达每单 {{ maxCount }} 个附件上限</p>
     </el-card>
 </template>
 
@@ -41,10 +44,15 @@ const emit = defineEmits(['change']);
 
 const uploading = ref(false);
 const maxMb = ref(meta().attach_max_mb);
+const maxCount = ref(meta().attach_max_count);
 
 onMounted(async () => {
-    maxMb.value = (await loadMeta()).attach_max_mb;
+    const m = await loadMeta();
+    maxMb.value = m.attach_max_mb;
+    maxCount.value = m.attach_max_count;
 });
+
+const reachedLimit = computed(() => (props.ticket.attachments?.length || 0) >= maxCount.value);
 
 // 图片附件（缩略图墙）；其余文件走列表
 const images = computed(() => (props.ticket.attachments || []).filter((a) => (a.mime || '').startsWith('image/')));
@@ -117,5 +125,11 @@ async function upload({ file }) {
 .attach-meta {
     color: #909399;
     font-size: 12px;
+}
+
+.hint {
+    margin: 6px 0 0;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
 }
 </style>

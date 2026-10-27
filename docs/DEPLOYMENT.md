@@ -49,14 +49,14 @@ supervisorctl status
 ## 5. 备份与恢复
 
 ```bash
-php artisan system:backup --keep-days=14     # 数据库 + storage/app/public 附件 → storage/backups
+php artisan system:backup --keep-days=14     # 数据库 + storage/app（含 attachments）→ storage/backups
 ```
 
-- 备份文件：`db-*.sql.gz` 与 `storage-public-*.tar.gz`，默认保留 14 天。
+- 备份文件：`db-*.sql.gz` 与 `storage-app-*.tar.gz`，默认保留 14 天。
 - **必须把 `storage/backups` 同步到异地**（对象存储/另一台机器），否则磁盘挂了备份也没了。
 - 恢复数据库：`gunzip -c db-xxx.sql.gz | mysql -u root -p ticket`
-- 恢复附件：`tar -xzf storage-public-xxx.tar.gz -C storage/app/public`
-- 恢复后执行 `php artisan optimize:clear`，并确认 `storage/app/public` 权限属于 www-data。
+- 恢复附件：`tar -xzf storage-app-xxx.tar.gz -C storage/app`
+- 恢复后执行 `php artisan optimize:clear`，并确认 `storage/app` 权限属于 www-data。
 
 **至少演练一次恢复**，没演练过的备份等于没有备份。
 

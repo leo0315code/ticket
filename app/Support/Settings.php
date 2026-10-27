@@ -18,6 +18,8 @@ class Settings
         'reopen_days' => 14,
         'reopen_limit' => 3,
         'attach_max_mb' => 10,
+        'attach_max_count' => 10,
+        'attach_quota_mb' => 0,     // 单工单附件总容量上限，0 = 不限
         'notify_mail' => true,
 
         // 登录方式：手机号验证码 / 微信公众号扫码

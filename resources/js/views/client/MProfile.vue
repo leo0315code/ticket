@@ -66,7 +66,7 @@
         </section>
 
         <button class="logout" @click="logout">退出登录</button>
-        <p class="ver">{{ meta().site_name || '工单支持中心' }}</p>
+        <p class="ver">{{ site.site_name }}</p>
 
         <el-dialog v-model="settingsVisible" title="账号设置" width="92%" style="max-width: 440px">
             <div class="dlg-label">基本资料</div>
@@ -130,9 +130,10 @@ import http from '../../api';
 import { useAuthStore } from '../../stores/auth';
 import { avatarColor } from '../../utils/avatar';
 import { STATUS_MAP } from '../../constants';
-import { meta } from '../../meta';
+import { loadMeta, meta } from '../../meta';
 
 const auth = useAuthStore();
+const site = reactive({ ...meta() });
 const router = useRouter();
 const stats = ref([{ label: '全部', value: '–' }]);
 const settingsVisible = ref(false);
@@ -247,7 +248,10 @@ async function logout() {
     if (router.currentRoute.value.path !== '/login') window.location.replace('/login');
 }
 
-onMounted(load);
+onMounted(async () => {
+    Object.assign(site, await loadMeta());
+    load();
+});
 </script>
 
 <style scoped>

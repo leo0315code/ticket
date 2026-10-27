@@ -1,7 +1,10 @@
 <template>
     <div class="m-shell">
         <header class="m-header">
-            <div class="m-brand" @click="$router.push('/m/tickets')">🎫 工单</div>
+            <div class="m-brand" @click="$router.push('/m/tickets')">
+                <span class="m-logo">🎫</span>
+                <span class="m-name">{{ site.site_name || '工单支持中心' }}</span>
+            </div>
             <NotificationBell />
             <el-avatar :size="30" :style="{ background: avatarColor(auth.user?.name) }" @click="$router.push('/m/profile')">
                 {{ auth.user?.name?.[0] }}
@@ -28,12 +31,16 @@
 </template>
 
 <script setup>
-import { computed } from 'vue';
+import { computed, onMounted, reactive } from 'vue';
 import { useRoute } from 'vue-router';
 import { Tickets, EditPen, Collection, User } from '@element-plus/icons-vue';
 import NotificationBell from './NotificationBell.vue';
 import { useAuthStore } from '../stores/auth';
 import { avatarColor } from '../utils/avatar';
+import { loadMeta, meta } from '../meta';
+
+const site = reactive({ ...meta() });
+onMounted(async () => Object.assign(site, await loadMeta()));
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -66,9 +73,22 @@ const tabs = [
     border-bottom: 1px solid var(--el-border-color-lighter);
 }
 .m-brand {
-    font-size: 17px;
-    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 6px;
     margin-right: auto;
+    min-width: 0;
+    cursor: pointer;
+}
+.m-logo {
+    font-size: 17px;
+}
+.m-name {
+    font-size: 16px;
+    font-weight: 700;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 .m-body {
     padding: 12px;
@@ -91,13 +111,24 @@ const tabs = [
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
     gap: 2px;
-    padding: 8px 0 6px;
-    font-size: 11px;
+    padding: 7px 0 5px;
+    font-size: 10px;
     color: var(--el-text-color-secondary);
     cursor: pointer;
+    transition: color 0.15s;
+}
+.m-tab .el-icon {
+    padding: 3px 12px;
+    border-radius: 999px;
+    transition: background 0.15s;
 }
 .m-tab.active {
     color: var(--el-color-primary);
+    font-weight: 600;
+}
+.m-tab.active .el-icon {
+    background: var(--el-color-primary-light-9);
 }
 </style>

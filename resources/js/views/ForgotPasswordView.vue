@@ -62,7 +62,7 @@ async function submit() {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f7f8fa;
+    background: var(--el-bg-color-page);
     padding: 24px;
 }
 .pw-card {
@@ -75,13 +75,13 @@ async function submit() {
     font-weight: 600;
 }
 .tip {
-    color: #606266;
+    color: var(--el-text-color-regular);
     font-size: 13px;
     line-height: 1.6;
     margin: 0 0 12px;
 }
 .hint {
-    color: #909399;
+    color: var(--el-text-color-secondary);
     font-size: 12px;
     line-height: 1.6;
     margin-top: 12px;

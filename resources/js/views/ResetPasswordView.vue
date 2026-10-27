@@ -88,7 +88,7 @@ async function submit() {
     display: flex;
     align-items: center;
     justify-content: center;
-    background: #f7f8fa;
+    background: var(--el-bg-color-page);
     padding: 24px;
 }
 .pw-card {
@@ -98,7 +98,7 @@ async function submit() {
     font-weight: 600;
 }
 .hint {
-    color: #909399;
+    color: var(--el-text-color-secondary);
     font-size: 12px;
     margin-top: 12px;
 }

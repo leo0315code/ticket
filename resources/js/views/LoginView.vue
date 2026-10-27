@@ -80,6 +80,7 @@ import { toggleTheme } from '../theme';
 import { homePath } from '../paths';
 import { loadMeta, meta } from '../meta';
 import QRCode from 'qrcode';
+import { notifyError } from '../notify';
 
 const dark = ref(document.documentElement.classList.contains('dark'));
 const auth = useAuthStore();

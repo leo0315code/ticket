@@ -66,17 +66,19 @@
                             <div class="tips">跳转到微信授权页，扫码确认后自动回到这里<br />微信需先在「账号设置」中绑定</div>
                         </div>
 
-                        <div class="forgot">
-                            <el-link type="primary" underline="never" @click="$router.push('/forgot-password')">忘记密码？</el-link>
-                            <el-link type="info" underline="never" @click="$router.push('/help')">帮助中心</el-link>
-                        </div>
-
                         <div v-if="site.phone_login_enabled || site.wechat_login_enabled" class="alt-methods">
+                            <span class="alt-line"></span>
                             <span class="alt-label">其他方式</span>
                             <el-button v-if="site.phone_login_enabled" link type="primary" @click="mode = mode === 'phone' ? 'password' : 'phone'">
                                 {{ mode === 'phone' ? '密码登录' : '手机号验证码' }}
                             </el-button>
                             <el-button v-if="site.wechat_login_enabled" link type="success" @click="doWechatLogin">微信扫码</el-button>
+                            <span class="alt-line"></span>
+                        </div>
+
+                        <div class="forgot">
+                            <el-link type="primary" underline="never" @click="$router.push('/forgot-password')">忘记密码？</el-link>
+                            <el-link type="info" underline="never" @click="$router.push('/help')">帮助中心</el-link>
                         </div>
                     </el-tab-pane>
 
@@ -261,7 +263,17 @@ async function doRegister() {
     justify-content: center;
 }
 .brand-logo {
-    font-size: 44px;
+    width: 64px;
+    height: 64px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 34px;
+    line-height: 1;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.16);
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.18);
+    backdrop-filter: blur(6px);
 }
 .brand-side h1 {
     margin: 12px 0 8px;
@@ -291,6 +303,20 @@ async function doRegister() {
     width: 100%;
     margin-top: 4px;
 }
+/* 暗色模式：整页与品牌侧一起变深，避免「一半紫一半黑」 */
+:global(html.dark) .login-page {
+    background: radial-gradient(120% 120% at 20% 0%, #232946 0%, #12131a 60%, #0d0e14 100%);
+}
+:global(html.dark) .brand-side {
+    background: linear-gradient(160deg, #2b2f55, #3b2b55);
+}
+:global(html.dark) .brand-logo {
+    background: rgba(255, 255, 255, 0.1);
+}
+:global(html.dark) .theme-toggle {
+    color: var(--el-text-color-primary);
+}
+
 @media (max-width: 768px) {
     .brand-side {
         display: none;
@@ -301,6 +327,9 @@ async function doRegister() {
     }
     .login-page {
         background: linear-gradient(165deg, #5b6ee8 0%, #8e54c9 100%);
+    }
+    :global(html.dark) .login-page {
+        background: linear-gradient(165deg, #232946 0%, #12131a 100%);
     }
     .form-side :deep(.el-tabs__nav) {
         width: 100%;
@@ -330,7 +359,7 @@ async function doRegister() {
     .forgot {
     display: flex;
     justify-content: space-between;
-    margin: -6px 0 10px;
+    margin-top: 12px;
     font-size: 13px;
 }
 .tips {
@@ -346,7 +375,7 @@ async function doRegister() {
 .forgot {
     display: flex;
     justify-content: space-between;
-    margin: -6px 0 10px;
+    margin-top: 12px;
     font-size: 13px;
 }
 .tips {
@@ -367,13 +396,21 @@ async function doRegister() {
     flex: 1;
 }
 .alt-methods {
-    margin-top: 14px;
-    text-align: center;
+    margin-top: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+}
+.alt-line {
+    flex: 1;
+    height: 1px;
+    background: var(--el-border-color-lighter);
 }
 .alt-label {
     color: var(--el-text-color-secondary);
     font-size: 12px;
-    margin-right: 6px;
+    white-space: nowrap;
 }
 .wechat-box {
     padding: 6px 0;

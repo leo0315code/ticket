@@ -48,8 +48,18 @@
 
             <!-- 微信扫码 -->
             <div v-else class="form wechat">
-                <el-button class="submit wechat-btn" :loading="wechatLoading" @click="doWechatLogin">微信扫码登录</el-button>
-                <p class="terms">跳转微信授权页，扫码确认后自动回到这里；微信需先在「账号设置」中绑定</p>
+                <template v-if="useQr">
+                    <img v-if="qrImage" :src="qrImage" class="qr" alt="微信扫码登录" />
+                    <p v-if="qrExpired" class="terms">
+                        二维码已过期，<el-button link type="primary" @click="startQr">刷新一下</el-button>
+                    </p>
+                    <p v-else class="terms">用微信扫一扫，在手机里确认授权后，电脑会自动登录</p>
+                    <p class="terms muted">需先在手机或电脑登录，并在「账号设置」里绑定微信</p>
+                </template>
+                <template v-else>
+                    <el-button class="submit wechat-btn" :loading="wechatLoading" @click="doWechatLogin">微信扫码登录</el-button>
+                    <p class="terms">跳转微信授权页，扫码确认后自动回到这里；微信需先在「账号设置」中绑定</p>
+                </template>
             </div>
 
             <el-alert v-if="error" :title="error" type="error" :closable="false" class="error" />
@@ -62,7 +72,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { Moon, Sunny } from '@element-plus/icons-vue';
@@ -71,6 +81,7 @@ import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
 import { homePath } from '../paths';
 import { loadMeta, meta } from '../meta';
+import QRCode from 'qrcode';
 
 const dark = ref(document.documentElement.classList.contains('dark'));
 const auth = useAuthStore();
@@ -90,9 +101,65 @@ const phoneSending = ref(false);
 const countdown = ref(0);
 let countdownTimer = null;
 const wechatLoading = ref(false);
+// 公众号扫码：PC 端展示二维码，手机微信授权，电脑轮询拿登录态
+const useQr = computed(() => site.wechat_mode === 'mp' && !/MicroMessenger/i.test(navigator.userAgent));
+const qrImage = ref('');
+const qrScene = ref('');
+const qrExpired = ref(false);
+let qrTimer = null;
+
+async function startQr() {
+    qrExpired.value = false;
+    qrImage.value = '';
+    qrScene.value = '';
+    error.value = '';
+    try {
+        const { data } = await http.post('/auth/wechat/qr');
+        qrScene.value = data.scene;
+        qrImage.value = await QRCode.toDataURL(data.url, { width: 220, margin: 1 });
+        clearInterval(qrTimer);
+        qrTimer = setInterval(pollQr, 2000);
+    } catch (e) {
+        error.value = e.response?.data?.message || '生成二维码失败';
+    }
+}
+
+async function pollQr() {
+    if (!qrScene.value) return;
+    try {
+        const { data } = await http.get(`/auth/wechat/qr/${qrScene.value}`);
+        if (data.status === 'ok') {
+            stopQr();
+            auth.applySession(data.token, data.user);
+            afterLogin();
+        } else if (data.status === 'expired') {
+            stopQr();
+            qrExpired.value = true;
+        }
+    } catch {
+        // 网络抖动继续轮询
+    }
+}
+
+function stopQr() {
+    clearInterval(qrTimer);
+    qrTimer = null;
+    qrScene.value = '';
+}
+
+watch(mode, (value) => {
+    if (value === 'wechat' && useQr.value) {
+        startQr();
+    } else {
+        stopQr();
+    }
+});
+
+onUnmounted(stopQr);
 
 onMounted(async () => {
     Object.assign(site, await loadMeta());
+    if (mode.value === 'wechat' && useQr.value) startQr();
 });
 
 function afterLogin() {
@@ -236,6 +303,19 @@ label {
     margin: 18px 0 8px;
     font-size: 14px;
     color: var(--el-text-color-regular);
+}
+.qr {
+    width: 220px;
+    height: 220px;
+    display: block;
+    margin: 6px auto 10px;
+    border-radius: 6px;
+    background: #fff;
+    padding: 6px;
+    border: 1px solid var(--el-border-color-lighter);
+}
+.terms.muted {
+    color: var(--el-text-color-placeholder);
 }
 .code-row {
     display: flex;

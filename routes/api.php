@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\RoleController;
 use App\Http\Controllers\Api\StatsController;
 use App\Http\Controllers\Api\TicketController;
 use App\Http\Controllers\Api\TicketExportController;
+use App\Http\Controllers\Api\WeChatQrController;
 use App\Http\Controllers\Api\SettingsController;
 use App\Http\Controllers\Api\MetaController;
 use App\Http\Controllers\Api\TicketLogController;
@@ -33,6 +34,9 @@ Route::post('/auth/phone/code', [LoginMethodController::class, 'phoneCode'])->mi
 Route::post('/auth/phone/login', [LoginMethodController::class, 'phoneLogin'])->middleware('throttle:10,1');
 Route::get('/auth/wechat/url', [LoginMethodController::class, 'wechatUrl'])->middleware('throttle:30,1');
 Route::post('/auth/wechat/login', [LoginMethodController::class, 'wechatLogin'])->middleware('throttle:10,1');
+Route::post('/auth/wechat/qr', [WeChatQrController::class, 'start'])->middleware('throttle:10,1');
+Route::post('/auth/wechat/qr/confirm', [WeChatQrController::class, 'confirm'])->middleware('throttle:10,1');
+Route::get('/auth/wechat/qr/{scene}', [WeChatQrController::class, 'status'])->middleware('throttle:120,1');
 
 // 找回密码（无邮箱账号只能联系管理员，后续可接手机号/公众号验证）
 Route::post('/password/forgot', [AuthController::class, 'forgotPassword'])->middleware('throttle:5,1');

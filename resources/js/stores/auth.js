@@ -29,6 +29,9 @@ export const useAuthStore = defineStore('auth', {
             localStorage.setItem('ticket_token', token);
             localStorage.setItem('ticket_user', JSON.stringify(user));
         },
+        applySession(token, user) {
+            this.save(token, user);
+        },
         async login(account, password) {
             const { data } = await http.post('/login', { account, password });
             this.save(data.token, data.user);

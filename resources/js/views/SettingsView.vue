@@ -126,6 +126,12 @@
                     <el-radio-button value="mp">公众号（网页授权）</el-radio-button>
                 </el-radio-group>
             </el-form-item>
+            <el-form-item label=" " v-if="form.wechat_mode === 'mp'">
+                <span class="hint">公众号模式：电脑上显示二维码，手机微信扫码授权后电脑自动登录；微信内打开则直接跳授权。AppID/AppSecret 填公众号的，并在公众号后台配置「网页授权域名」</span>
+            </el-form-item>
+            <el-form-item label=" " v-else>
+                <span class="hint">开放平台模式：电脑端用开放平台网站应用的二维码扫码；AppID/AppSecret 填网站应用的，并在开放平台配置授权回调域</span>
+            </el-form-item>
             <el-form-item label="AppID">
                 <el-input v-model="form.wechat_app_id" maxlength="100" style="width: 320px" />
             </el-form-item>

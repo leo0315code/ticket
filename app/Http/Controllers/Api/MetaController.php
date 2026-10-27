@@ -17,6 +17,7 @@ class MetaController extends Controller
             'attach_max_mb' => (int) Settings::get('attach_max_mb'),
             'phone_login_enabled' => (bool) Settings::get('phone_login_enabled'),
             'wechat_login_enabled' => (bool) Settings::get('wechat_login_enabled'),
+            'wechat_mode' => (string) Settings::get('wechat_mode', 'open'),
         ]);
     }
 }

@@ -872,6 +872,7 @@ faqs                                -- 直接扩，不建 kb_articles
 - **用户管理升级（v2.19）**：搜索（姓名/账号/邮箱）+ 角色筛选 + 启用状态筛选 + 分页 + 最后登录时间；新增「编辑账号」（改姓名/邮箱/角色/启停用）与「停用账号」——停用即踢掉全部登录、再登录返回 403；保留「重置密码」。
 - **公开帮助中心（v2.23）**：`/help` 无需登录即可搜索、按分类浏览、展开阅读、点赞/点踩，只返回 `is_public` 条目；`/api/faqs`、`view`、`feedback` 移到公开路由并限流（可选登录：带 token 的客服仍能看到全部条目）；登录页与移动端帮助中心共用同一份内容；底部“没找到答案 → 登录后提交工单”。
 - **自助找回密码（v2.23）**：登录页「忘记密码？」→ 输入用户名或邮箱 → 若账号绑定邮箱则发送重置链接（`/reset-password?token=…` 前端页面，链接由 `ResetPassword::createUrlUsing` 生成）；重置成功后踢掉该账号全部登录 token；未绑定邮箱的账号提示联系管理员；对不存在的账号返回同一句话防枚举。手机号/公众号验证留作后续扩展（`users.phone` 字段已存在）。
+- **界面提示中文化（v2.26）**：新增 `lang/zh_CN/validation.php`（校验/自定义提示/字段名），运行时若环境仍是 `APP_LOCALE=en` 且没有 `lang/en`，自动回退 `zh_CN`；401/403/429 也统一成中文（「未登录或登录已过期」「没有该操作权限」「操作太频繁」），避免把框架英文提示露给用户。
 - **多方式登录（v2.24）**：新增「手机号验证码登录」与「微信公众号扫码登录」，与密码登录并存，登录页按后台开关显示入口。
   - 手机号：`POST /api/auth/phone/code` 发送 6 位验证码（缓存存哈希，5 次错误作废，60 秒重发冷却、每日 10 条上限），`POST /api/auth/phone/login` 换 token；短信通道可配为「写日志（联调）」或「HTTP 网关」（POST `{phone, code, content, purpose}`）。
   - 微信：`GET /api/auth/wechat/url` 返回授权地址（开放平台 `qrconnect` 或公众号 `oauth2/authorize`，state 用 HMAC 防 CSRF，10 分钟有效），`POST /api/auth/wechat/login` 用 code 换 openid 后登录；`/wechat/callback` 是前端回调页，登录/绑定共用。

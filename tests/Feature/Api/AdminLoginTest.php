@@ -27,7 +27,7 @@ class AdminLoginTest extends ApiTestCase
         // 无 ticket
         $this->postJson('/api/admin/login', [
             'account' => 'agent_x', 'password' => 'password',
-        ])->assertStatus(422)->assertJsonValidationErrors('captcha_ticket');
+        ])->assertStatus(422)->assertJsonValidationErrors('captcha_ticket')->assertJsonPath('message', '请先完成滑块验证。');
 
         // 伪造 ticket
         $this->postJson('/api/admin/login', [

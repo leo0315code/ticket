@@ -17,6 +17,12 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // 本项目只维护中文语言包：.env 里若还是 APP_LOCALE=en（无 lang/en），回退到 zh_CN，
+        // 否则校验/认证提示会漏出英文
+        if (! is_dir(lang_path(app()->getLocale()))) {
+            app()->setLocale('zh_CN');
+        }
+
         // 角色权限直接映射成 Gate ability：$user->can('ticket.assign')
         Gate::before(function (User $user, string $ability) {
             return $user->hasPermission($ability) ? true : null;

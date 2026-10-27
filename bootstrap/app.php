@@ -1,7 +1,9 @@
 <?php
 
 use Illuminate\Foundation\Application;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Auth\AuthenticationException;
+use Illuminate\Http\Exceptions\TooManyRequestsHttpException;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
@@ -33,6 +35,19 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->render(function (AuthenticationException $e, Request $request) {
             if ($request->is('api/*')) {
                 return response()->json(['message' => '未登录或登录已过期'], 401);
+            }
+        });
+
+        // 权限/限流也统一中文，避免把框架英文提示露给用户
+        $exceptions->render(function (AuthorizationException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => '没有该操作权限'], 403);
+            }
+        });
+
+        $exceptions->render(function (TooManyRequestsHttpException $e, Request $request) {
+            if ($request->is('api/*')) {
+                return response()->json(['message' => '操作太频繁，请稍后再试'], 429);
             }
         });
     })->create();

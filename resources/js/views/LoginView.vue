@@ -17,11 +17,11 @@
             <!-- 手机号验证码 -->
             <div v-if="mode === 'phone'" class="form">
                 <label>手机号</label>
-                <el-input v-model="phone.phone" maxlength="11" size="large" placeholder="请输入你的手机号" clearable />
+                <el-input v-model="phone.phone" maxlength="11" size="large" placeholder="请输入你的手机号" clearable @input="error = ''" />
 
                 <label>验证码</label>
                 <div class="code-row">
-                    <el-input v-model="phone.code" maxlength="6" size="large" placeholder="请输入 6 位数字" />
+                    <el-input v-model="phone.code" maxlength="6" size="large" placeholder="请输入 6 位数字" @input="error = ''" @keyup.enter="doPhoneLogin" />
                     <el-button class="code-btn" :disabled="countdown > 0 || phoneSending" :loading="phoneSending" @click="sendPhoneCode">
                         {{ countdown > 0 ? countdown + 's' : '发送验证码' }}
                     </el-button>
@@ -34,10 +34,10 @@
             <!-- 账号密码 -->
             <div v-else-if="mode === 'password'" class="form">
                 <label>账号</label>
-                <el-input v-model="form.account" size="large" placeholder="用户名 / 邮箱" clearable />
+                <el-input v-model="form.account" size="large" placeholder="用户名 / 邮箱" clearable @input="error = ''" />
 
                 <label>密码</label>
-                <el-input v-model="form.password" type="password" size="large" placeholder="请输入密码" show-password @keyup.enter="doLogin" />
+                <el-input v-model="form.password" type="password" size="large" placeholder="请输入密码" show-password @input="error = ''" @keyup.enter="doLogin" />
 
                 <el-button class="submit" :loading="loading" @click="doLogin">登 录</el-button>
                 <p class="terms">
@@ -148,6 +148,8 @@ function stopQr() {
 }
 
 watch(mode, (value) => {
+    // 切换登录方式时，旧方式的报错不该留在页面上
+    error.value = '';
     if (value === 'wechat' && useQr.value) {
         startQr();
     } else {
@@ -167,8 +169,16 @@ function afterLogin() {
 }
 
 async function doLogin() {
-    loading.value = true;
     error.value = '';
+    if (!form.account.trim()) {
+        error.value = '请输入账号';
+        return;
+    }
+    if (!form.password) {
+        error.value = '请输入密码';
+        return;
+    }
+    loading.value = true;
     try {
         await auth.login(form.account, form.password);
         if (auth.isStaff && !redirectTo) {
@@ -185,8 +195,10 @@ async function doLogin() {
 }
 
 async function sendPhoneCode() {
+    error.value = '';
     if (!/^1[3-9]\d{9}$/.test(phone.phone)) {
-        ElMessage.warning('请输入正确的手机号');
+        // 用页面内提示，不用会自动消失的 toast，避免“一闪没了”
+        error.value = '请输入 11 位手机号，例如 13800138000';
         return;
     }
     phoneSending.value = true;
@@ -208,8 +220,16 @@ async function sendPhoneCode() {
 }
 
 async function doPhoneLogin() {
-    loading.value = true;
     error.value = '';
+    if (!/^1[3-9]\d{9}$/.test(phone.phone)) {
+        error.value = '请输入 11 位手机号，例如 13800138000';
+        return;
+    }
+    if (!/^\d{6}$/.test(phone.code)) {
+        error.value = '请输入手机收到的 6 位验证码';
+        return;
+    }
+    loading.value = true;
     try {
         await auth.loginWithPhone(phone.phone, phone.code);
         afterLogin();

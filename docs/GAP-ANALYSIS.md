@@ -1039,3 +1039,41 @@ WebSocket 仍是直连 `wss://host:1238`（反代方案因 ServBay vhost 自动�
 1. **CI + 备份 + 进程守护**（没有这层，前面所有功能都是"演示环境"）；
 2. **解决时限 SLA**（对外承诺从"有人回"升级为"多久解决"）；
 3. **附件治理**（唯一会无声无息把服务器撑爆的地方）。
+
+## 15. P0 / P1 落地记录（v2.35）
+
+按 §14 的清单逐项实现，每项独立提交，全部测试 164 passed / 697 assertions。
+
+### 15.1 P0：从“能跑”到“能放心跑”
+
+| 项 | 落地内容 | 提交 |
+|---|---|---|
+| CI | `.github/workflows/ci.yml`：PHP 8.3 + SQLite 跑 `php artisan test`，Node 20 跑 `npm ci && npm run build` | `b938484` |
+| 健康检查 | `GET /api/health`：数据库/缓存/存储/队列积压，200 或 503；`/up` 保留 | `b938484` |
+| 安全基线 | `SecurityHeaders` 中间件（nosniff / X-Frame-Options / Referrer-Policy / HSTS）、`TRUSTED_PROXIES` 支持 | `b938484` |
+| 日志 | 默认 `LOG_CHANNEL=daily`，保留 14 天（`LOG_DAILY_DAYS`） | `b938484` |
+| 进程守护 | `deploy/supervisor/ticket-worker.conf`、`ticket-gateway.conf`、`deploy/crontab` | `b938484` |
+| 备份 | `php artisan system:backup`：mysqldump + `storage/app` 打包、保留 14 天；scheduler 每日 03:10 | `b938484` |
+| 部署手册 | `docs/DEPLOYMENT.md`：依赖、首次部署、守护、cron、备份恢复、nginx、安全清单、升级流程 | `b938484` |
+| 附件治理 | 每单附件数量 / 总容量上限（系统设置）、`attachments:prune` 清孤儿与丢失记录、每周执行；备份改为覆盖整个 `storage/app` | `2f7888b` |
+
+### 15.2 P1：服务台能力补齐
+
+| 项 | 落地内容 | 提交 |
+|---|---|---|
+| 解决时限 SLA | `tickets.resolution_due_at`；`Sla` 支持营业时间（工作日 + 时区 + 起止时间）累加；优先级变更重算；看板解决合规率；超期每 24h 提醒 | `0bd3ca0` |
+| 关注者 | `ticket_watchers`；关注/取消、公开回复与状态变更通知、客户看不到名单只看到人数 | `a6ea51d` |
+| 合并工单 | `tickets.merged_into_id`；合并时回复/附件迁移、来源单关闭并指向目标单、双方留痕、通知提交人 | `1f03e8f` |
+| 权限审计 | `audit_logs`；角色增改删、账号角色/启停/重置密码、系统设置变更（密钥只记键名）；操作审计页新增「系统审计」页签 | `4a54605` |
+| 通知偏好 | `users.notify_email`；账号设置可关闭邮件，站内信不受影响 | `c0500d1` |
+| 全文搜索 | MySQL FULLTEXT（ngram 分词）覆盖工单标题/正文、回复正文、FAQ 问答；SQLite/短词自动退回 LIKE | `0faafa0` |
+
+### 15.3 仍未做（P2 及以后）
+
+邮件入站、触发器/自动分配、Webhook / API Token、2FA、多语言、多租户、产品内 widget、报表订阅、附件在线预览、PWA 离线。
+
+### 15.4 仍需人工完成的三件事
+
+1. 在真实服务器上配 supervisor + cron，并做一次**备份恢复演练**（脚本已就绪，演练没法由代码代替）。
+2. 把 `/api/health` 接入监控（Uptime Kuma / 云监控均可）。
+3. 微信/短信密钥目前仍明文入库，建议后续接 KMS 或至少限制数据库账号权限。

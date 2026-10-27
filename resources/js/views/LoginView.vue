@@ -219,9 +219,6 @@ async function doRegister() {
     padding: 24px;
     box-sizing: border-box;
 }
-:global(html.dark) .login-page {
-    background: #0f1014;
-}
 .theme-toggle {
     position: absolute;
     top: 22px;
@@ -236,10 +233,6 @@ async function doRegister() {
     border-radius: 8px;
     padding: 40px 36px 28px;
     box-shadow: 0 2px 16px rgba(31, 45, 61, 0.07);
-}
-:global(html.dark) .card {
-    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
-    border: 1px solid var(--el-border-color-lighter);
 }
 .title {
     margin: 0 0 26px;
@@ -367,5 +360,19 @@ label {
     .title {
         font-size: 22px;
     }
+}
+</style>
+
+<style>
+/* 暗色模式：选择器要挂在 html 根节点上，放在 scoped 里会被 Vue 编译坏 */
+html.dark .login-page {
+    background: #0f1014;
+}
+html.dark .login-page .card {
+    box-shadow: 0 2px 16px rgba(0, 0, 0, 0.5);
+    border: 1px solid var(--el-border-color-lighter);
+}
+html.dark .login-page .theme-toggle {
+    color: var(--el-text-color-secondary);
 }
 </style>

@@ -52,7 +52,7 @@ class Ticket extends Model
         'no', 'title', 'content', 'status', 'priority',
         'user_id', 'agent_id', 'category_id',
         'resolved_at', 'closed_at', 'rating', 'rating_comment',
-        'sla_due_at', 'resolution_due_at', 'first_response_at',
+        'sla_due_at', 'resolution_due_at', 'first_response_at', 'merged_into_id',
         'closed_reason', 'reopen_count', 'last_activity_at',
     ];
 
@@ -137,6 +137,11 @@ class Ticket extends Model
     public function replies(): HasMany
     {
         return $this->hasMany(TicketReply::class);
+    }
+
+    public function mergedInto(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'merged_into_id');
     }
 
     /** 关注者（收到公开回复与状态变更通知，但不改变可见性） */

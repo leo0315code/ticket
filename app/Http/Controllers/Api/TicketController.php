@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Notifications\TicketEventNotification;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Notification;
 use Illuminate\Validation\Rule;
@@ -79,6 +80,64 @@ class TicketController extends Controller
         $ticket->watchers()->detach($request->user()->id);
 
         return response()->json(['watching' => false, 'count' => $ticket->watchers()->count()]);
+    }
+
+    /**
+     * 合并工单：把来源单的回复/附件搬到目标单，来源单关闭并指向目标单。
+     * 典型场景：客户重复提交、同一问题多人反馈。
+     */
+    public function merge(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('update', $ticket);
+        if (! $request->user()->hasPermission('ticket.close')) {
+            return response()->json(['message' => '没有合并工单的权限'], 403);
+        }
+
+        $data = $request->validate([
+            'target_no' => ['required', 'string', 'max:40'],
+        ]);
+
+        if ($ticket->merged_into_id) {
+            return response()->json(['message' => '该工单已经合并过了'], 422);
+        }
+
+        $target = Ticket::where('no', $data['target_no'])->first();
+        if (! $target || $target->id === $ticket->id) {
+            return response()->json(['message' => '目标工单不存在'], 422);
+        }
+        if ($target->merged_into_id) {
+            return response()->json(['message' => '目标工单本身已被合并，请选择最终工单'], 422);
+        }
+
+        DB::transaction(function () use ($ticket, $target, $request) {
+            $ticket->replies()->update(['ticket_id' => $target->id]);
+            $ticket->attachments()->update(['ticket_id' => $target->id]);
+
+            $ticket->update([
+                'status' => 'closed',
+                'closed_reason' => 'merged',
+                'merged_into_id' => $target->id,
+                'resolved_at' => now(),
+                'closed_at' => now(),
+                'last_activity_at' => now(),
+            ]);
+
+            $ticket->log('merged', $request->user()->id, "合并到工单 {$target->no}");
+            $target->log('merged_in', $request->user()->id, "合并入工单 {$ticket->no}");
+            $target->update(['last_activity_at' => now()]);
+        });
+
+        if ($ticket->user_id !== $request->user()->id) {
+            $ticket->user?->notify(new \App\Notifications\TicketEventNotification(
+                $ticket,
+                "您的工单 {$ticket->no} 已合并到 {$target->no} 继续跟进，后续回复请在 {$target->no} 中查看",
+                'merged',
+            ));
+        }
+
+        return response()->json(new TicketResource(
+            $ticket->load(['mergedInto:id,no,title', 'user:id,name', 'agent:id,name'])->loadCount('replies')
+        ));
     }
 
     public function show(Request $request, Ticket $ticket): JsonResponse

@@ -32,6 +32,11 @@ class TicketResource extends JsonResource
             'resolution_overdue' => $this->isResolutionOverdue(),
             'first_response_at' => $this->first_response_at?->format('Y-m-d H:i'),
             'closed_reason' => $this->closed_reason,
+            'merged_into' => $this->whenLoaded('mergedInto', fn () => [
+                'id' => $this->mergedInto->id,
+                'no' => $this->mergedInto->no,
+                'title' => $this->mergedInto->title,
+            ]),
             'reopen_count' => (int) ($this->reopen_count ?? 0),
             'can_reopen' => $this->canBeReopenedBy($request->user()),
             'last_activity_at' => $this->last_activity_at?->format('Y-m-d H:i'),

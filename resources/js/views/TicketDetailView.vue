@@ -9,11 +9,23 @@
                     {{ ticket.is_watching ? '已关注' : '关注' }}
                     <template v-if="ticket.watchers_count">（{{ ticket.watchers_count }}）</template>
                 </el-button>
+                <el-button v-if="auth.isStaff && !ticket.merged_into" size="small" plain :loading="merging" @click="mergeInto">
+                    合并
+                </el-button>
                 <el-button v-if="canReopen" type="warning" plain size="small" :loading="reopening" @click="reopen">
                     问题未解决，重新打开
                 </el-button>
             </template>
         </el-page-header>
+
+        <el-alert
+            v-if="ticket.merged_into"
+            type="info"
+            show-icon
+            :closable="false"
+            style="margin-bottom: 12px"
+            :title="`该工单已合并到 ${ticket.merged_into.no}：${ticket.merged_into.title}`"
+        />
 
         <el-row :gutter="isMobile ? 0 : 16">
             <el-col :xs="24" :sm="16">
@@ -109,7 +121,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
-import { ElMessage } from 'element-plus';
+import { ElMessage, ElMessageBox } from 'element-plus';
 import { notifyError } from '../notify';
 import http from '../api';
 import { connectRealtime } from '../realtime';
@@ -142,6 +154,7 @@ const agents = ref([]);
 const ratingSaving = ref(false);
 const reopening = ref(false);
 const watching = ref(false);
+const merging = ref(false);
 const loadingEarlier = ref(false);
 const olderReplies = ref([]);
 const ratingForm = reactive({ rating: 0, comment: '' });
@@ -189,6 +202,25 @@ async function loadEarlier() {
 
 function onOpsSaved(data) {
     ticket.value = { ...ticket.value, ...data };
+}
+
+async function mergeInto() {
+    try {
+        const { value } = await ElMessageBox.prompt('输入目标工单编号（如 TK-20261027-0001），来源单的回复和附件会一并迁移', '合并工单', {
+            inputPlaceholder: '目标工单编号',
+            confirmButtonText: '合并',
+            cancelButtonText: '取消',
+        });
+        if (!value) return;
+        merging.value = true;
+        const { data } = await http.post(`/tickets/${route.params.id}/merge`, { target_no: value.trim() });
+        ticket.value = { ...ticket.value, ...data };
+        ElMessage.success('已合并，回复已迁移到目标工单');
+    } catch (e) {
+        if (e !== 'cancel' && e?.response) notifyError(e.response?.data?.message || '合并失败');
+    } finally {
+        merging.value = false;
+    }
 }
 
 async function toggleWatch() {

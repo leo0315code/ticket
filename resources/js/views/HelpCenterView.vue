@@ -16,7 +16,7 @@
                     <el-button size="small" @click="goApp">{{ auth.isStaff ? '进入工作台' : '我的工单' }}</el-button>
                 </template>
                 <template v-else>
-                    <el-button size="small" @click="$router.push('/login')">登录 / 注册</el-button>
+                    <el-button size="small" @click="$router.push('/login')">登录</el-button>
                 </template>
             </div>
         </header>

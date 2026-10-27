@@ -6,16 +6,16 @@
         </el-icon>
 
         <div class="card">
-            <h1 class="title">{{ pane === 'register' ? '注册' + site.site_name : '登录' + site.site_name }}</h1>
+            <h1 class="title">登录{{ site.site_name }}</h1>
 
-            <div v-if="pane === 'login'" class="tabs">
+            <div class="tabs">
                 <button v-if="site.phone_login_enabled" :class="{ active: mode === 'phone' }" @click="mode = 'phone'">手机登录</button>
                 <button :class="{ active: mode === 'password' }" @click="mode = 'password'">账号密码登录</button>
                 <button v-if="site.wechat_login_enabled" :class="{ active: mode === 'wechat' }" @click="mode = 'wechat'">微信扫码</button>
             </div>
 
             <!-- 手机号验证码 -->
-            <div v-if="pane === 'login' && mode === 'phone'" class="form">
+            <div v-if="mode === 'phone'" class="form">
                 <label>手机号</label>
                 <el-input v-model="phone.phone" maxlength="11" size="large" placeholder="请输入你的手机号" clearable />
 
@@ -32,7 +32,7 @@
             </div>
 
             <!-- 账号密码 -->
-            <div v-else-if="pane === 'login' && mode === 'password'" class="form">
+            <div v-else-if="mode === 'password'" class="form">
                 <label>账号</label>
                 <el-input v-model="form.account" size="large" placeholder="用户名 / 邮箱" clearable />
 
@@ -47,36 +47,15 @@
             </div>
 
             <!-- 微信扫码 -->
-            <div v-else-if="pane === 'login'" class="form wechat">
+            <div v-else class="form wechat">
                 <el-button class="submit wechat-btn" :loading="wechatLoading" @click="doWechatLogin">微信扫码登录</el-button>
                 <p class="terms">跳转微信授权页，扫码确认后自动回到这里；微信需先在「账号设置」中绑定</p>
-            </div>
-
-            <!-- 注册 -->
-            <div v-else class="form">
-                <label>昵称</label>
-                <el-input v-model="reg.name" size="large" placeholder="展示给客服的称呼" />
-
-                <label>账号</label>
-                <el-input v-model="reg.username" size="large" placeholder="2-30 位中文 / 字母 / 数字 / 下划线" />
-
-                <label>密码</label>
-                <el-input v-model="reg.password" type="password" size="large" placeholder="至少 8 位" show-password @keyup.enter="doRegister" />
-
-                <el-button class="submit" :loading="loading" @click="doRegister">注 册</el-button>
-                <p class="terms">邮箱选填，注册后可在「我的 → 账号设置」绑定</p>
             </div>
 
             <el-alert v-if="error" :title="error" type="error" :closable="false" class="error" />
 
             <div class="foot">
-                <template v-if="pane === 'register'">
-                    <a @click="pane = 'login'">已有账号，去登录</a>
-                </template>
-                <template v-else>
-                    <a v-if="site.allow_register" @click="pane = 'register'">注册账号</a>
-                    <a @click="$router.push('/help')">帮助中心</a>
-                </template>
+                <a @click="$router.push('/help')">帮助中心</a>
             </div>
         </div>
     </div>
@@ -100,9 +79,8 @@ const route = useRoute();
 const redirectTo = typeof route.query.redirect === 'string' ? route.query.redirect : '';
 
 const site = reactive({ ...meta() });
-const pane = ref('login');
-// 登录方式：phone / password / wechat
-const mode = ref(site.phone_login_enabled ? 'phone' : 'password');
+// 登录方式：password / phone / wechat；默认账号密码登录
+const mode = ref('password');
 const loading = ref(false);
 const error = ref('');
 
@@ -112,12 +90,9 @@ const phoneSending = ref(false);
 const countdown = ref(0);
 let countdownTimer = null;
 const wechatLoading = ref(false);
-const reg = reactive({ name: '', username: '', password: '' });
 
 onMounted(async () => {
     Object.assign(site, await loadMeta());
-    // 开了手机号登录就默认用它（更省事），否则用账号密码
-    if (site.phone_login_enabled && mode.value === 'password') mode.value = 'phone';
 });
 
 function afterLogin() {
@@ -192,20 +167,6 @@ async function doWechatLogin() {
     }
 }
 
-async function doRegister() {
-    loading.value = true;
-    error.value = '';
-    try {
-        await auth.register(reg.name, reg.username, reg.password);
-        ElMessage.success('注册成功，欢迎！');
-        afterLogin();
-    } catch (e) {
-        const errors = e.response?.data?.errors;
-        error.value = e.response?.data?.message || (errors ? Object.values(errors).flat().join('；') : '注册失败');
-    } finally {
-        loading.value = false;
-    }
-}
 </script>
 
 <style scoped>

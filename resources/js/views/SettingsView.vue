@@ -22,7 +22,7 @@
             </el-form-item>
             <el-form-item label="开放注册">
                 <el-switch v-model="form.allow_register" />
-                <span class="hint">关闭后新用户无法自助注册，只能由管理员创建账号</span>
+                <span class="hint">关闭后手机号验证通过也不会自动建号，账号只能由管理员创建</span>
             </el-form-item>
             <el-form-item label="邮件通知">
                 <el-switch v-model="form.notify_mail" />

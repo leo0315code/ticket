@@ -15,7 +15,10 @@
             style="margin-bottom: 18px"
         />
 
-        <h4 class="section">基本信息</h4>
+                    <el-tabs v-model="activeTab">
+            <el-tab-pane label="基本信息" name="basic">
+            <h4 class="section">基本信息</h4>
+
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item label="站点名称">
                 <el-input v-model="form.site_name" maxlength="50" />
@@ -42,7 +45,10 @@
             </el-form-item>
         </el-form>
 
-        <h4 class="section">登录方式</h4>
+                    </el-tab-pane>
+            <el-tab-pane label="登录方式" name="login">
+            <h4 class="section">登录方式</h4>
+
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item label="手机号验证码登录">
                 <el-switch v-model="form.phone_login_enabled" />
@@ -167,7 +173,10 @@
             </el-form-item>
         </el-form>
 
-        <h4 class="section">响应时限（SLA）</h4>
+                    </el-tab-pane>
+            <el-tab-pane label="SLA 时限" name="sla">
+            <h4 class="section">响应时限（SLA）</h4>
+
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item v-for="p in priorities" :key="p.key" :label="`${p.label}工单`">
                 <el-input-number v-model="form.sla_hours[p.key]" :min="1" :max="168" />
@@ -175,7 +184,8 @@
             </el-form-item>
         </el-form>
 
-        <h4 class="section">解决时限（SLA）</h4>
+                    <h4 class="section">解决时限（SLA）</h4>
+
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item v-for="p in priorities" :key="`r-${p.key}`" :label="`${p.label}工单`">
                 <el-input-number v-model="form.resolution_hours[p.key]" :min="1" :max="720" />
@@ -206,7 +216,10 @@
             </template>
         </el-form>
 
-        <h4 class="section">工单生命周期</h4>
+                    </el-tab-pane>
+            <el-tab-pane label="生命周期" name="lifecycle">
+            <h4 class="section">工单生命周期</h4>
+
         <el-form-item label="新工单自动分配">
             <el-switch v-model="form.auto_assign" />
             <span class="hint">开启后优先指派给分类的默认客服，否则给未结工单最少的客服</span>
@@ -235,7 +248,9 @@
                 <el-input-number v-model="form.reopen_limit" :min="0" :max="20" />
                 <span class="hint">次，超过后提示新建工单</span>
             </el-form-item>
-        </el-form>
+        </el-form>            </el-tab-pane>
+            </el-tabs>
+
     </el-card>
 </template>
 
@@ -256,6 +271,7 @@ const priorities = [
 
 const loading = ref(true);
 const saving = ref(false);
+const activeTab = ref('basic');
 const form = reactive({
     site_name: '',
     allow_register: true,
@@ -371,7 +387,7 @@ onMounted(load);
     padding-left: 8px;
     border-left: 3px solid var(--el-color-primary);
     font-size: 14px;
-    color: #303133;
+    color: var(--el-text-color-primary);
 }
 
 .section:first-of-type {
@@ -380,7 +396,7 @@ onMounted(load);
 
 .hint {
     margin-left: 10px;
-    color: #909399;
+    color: var(--el-text-color-secondary);
     font-size: 13px;
 }
 </style>

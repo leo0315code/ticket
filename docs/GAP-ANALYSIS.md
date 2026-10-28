@@ -880,20 +880,20 @@ faqs                                -- 直接扩，不建 kb_articles
   - 自动注册：手机号验证通过但库里没有该号时直接建号（昵称「用户+后 4 位」、登录名 `p+手机号`、随机密码、角色 user），再次登录复用同一账号；「开放注册」关闭时拒绝自动建号（403），已有账号不受影响。微信仍要求先绑定，避免扫码即建号产生垃圾账号。
   - 安全：停用账号在任一登录方式下都 403；AppSecret 接口只回显“是否已设置”，留空保存不会覆盖。
 
-### - **新工单自动分配**（v2.36）：分类可设默认受理人；后台「系统设置 → 生命周期」可开启自动分配（默认客服优先，否则按未结量最少的客服）；指派后写日志并通知。
+- **新工单自动分配**（v2.36）：分类可设默认受理人；后台「系统设置 → 生命周期」可开启自动分配（默认客服优先，否则按未结量最少的客服）；指派后写日志并通知。
 - **关联工单**（v2.36）：双向关联（合并之外补关联），详情页右侧卡片按编号关联/解除/跳转，列表不查关联避免 N+1。
 - **统计导出 CSV**（v2.36）：`GET /api/stats/export?days=` 导出按天明细 + 坐席绩效（BOM 头 Excel 直开），看板工具条一键下载；权限沿用 `stats.view`。
-13.4 验证
+### 13.4 验证
 
-- `php artisan test`：**135 passed / 574 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条、`LoginMethodTest` 15 条）。
+- `php artisan test`：**175 passed / 733 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条、`LoginMethodTest` 15 条、`ResolutionSlaTest` 5 条、`TicketWatchTest` 6 条、`PermissionAuditTest` 4 条、`NotifyPreferenceTest` 5 条、`AutoAssignTest` 4 条、`TicketLinkTest` 4 条、`StatsExportTest` 3 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
-- 新增迁移 10 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
+- 新增迁移 19 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 - 权限约定：接口用 `permission:key` 中间件，前端用 `auth.can('key')`；新增敏感接口时两处都要加。
 
 ### 13.5 仍建议后续
 
 1. 帮助中心的“未命中搜索 → 一键提工单”埋点，用于反推该写哪些 FAQ。
-2. 邮件入站（IMAP）与触发器/自动分配，等工单量起来再说。
+2. 邮件入站（IMAP）与触发器规则引擎，等工单量起来再说（基础的自动分配已做）。
 3. 回复全文搜索（工单内搜索历史结论），工单量大后再做。
 
 ### 13.6 尚未做（按 2026-10-27 代码现状盘点）

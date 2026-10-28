@@ -1,5 +1,6 @@
 <template>
-    <el-card header="附件" style="margin-top: 16px">
+    <el-card header="附件" style="margin-top: 16px" :class="{ 'drag-over': dragOver }"
+        @drop.prevent="onDrop" @dragover.prevent="dragOver = true" @dragleave="dragOver = false">
         <!-- 图片缩略图（点击大图预览） -->
         <div v-if="images.length" class="img-wall">
             <el-image
@@ -43,6 +44,23 @@ const props = defineProps({ ticket: { type: Object, required: true } });
 const emit = defineEmits(['change']);
 
 const uploading = ref(false);
+const dragOver = ref(false);
+
+function onDrop(e) {
+    dragOver.value = false;
+    if (reachedLimit.value) {
+        ElMessage.warning(`已达每单 ${maxCount.value} 个附件上限`);
+        return;
+    }
+    const dropped = [...(e.dataTransfer?.files || [])];
+    for (const f of dropped) {
+        if (f.size > maxMb.value * 1024 * 1024) {
+            ElMessage.warning(`「${f.name}」超过 ${maxMb.value}MB，未上传`);
+            continue;
+        }
+        upload({ file: f });
+    }
+}
 const maxMb = ref(meta().attach_max_mb);
 const maxCount = ref(meta().attach_max_count);
 
@@ -104,6 +122,9 @@ async function upload({ file }) {
 </script>
 
 <style scoped>
+.drag-over {
+    box-shadow: 0 0 0 2px var(--el-color-primary) inset;
+}
 .img-wall {
     display: flex;
     flex-wrap: wrap;

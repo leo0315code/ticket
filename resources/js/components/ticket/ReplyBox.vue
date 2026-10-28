@@ -6,7 +6,7 @@
             <el-icon class="file-del" @click="files.splice(i, 1)"><CircleCloseFilled /></el-icon>
         </div>
 
-        <div class="reply-wrap">
+        <div class="reply-wrap" :class="{ 'drag-over': dragOver }" @paste="onPaste" @drop.prevent="onDrop" @dragover.prevent="dragOver = true" @dragleave="dragOver = false">
             <el-input
                 ref="inputRef"
                 v-model="reply"
@@ -148,7 +148,7 @@ const isInternal = ref(false);
 
 const placeholder = computed(() => {
     if (isInternal.value) return '内部备注：只给同事看，客户永远看不到…';
-    return auth.isStaff ? '输入回复内容…（@账号 提醒同事，Ctrl+Enter 发送）' : '输入回复内容…（Ctrl+Enter 发送）';
+    return auth.isStaff ? '输入回复内容…（@提醒同事，Ctrl+Enter 发送，可粘贴截图）' : '输入回复内容…（Ctrl+Enter 发送，可粘贴截图）';
 });
 
 // 快捷回复
@@ -266,6 +266,19 @@ function pickMention(u) {
     });
 }
 
+function acceptRaw(rawFile, displayName) {
+    if (! rawFile) return;
+    if (rawFile.size > maxMb.value * 1024 * 1024) {
+        ElMessage.warning(`「${displayName || rawFile.name}」超过 ${maxMb.value}MB，未添加`);
+        return;
+    }
+    if (files.value.length >= 3) {
+        ElMessage.warning('一条回复最多附带 3 个附件');
+        return;
+    }
+    files.value.push({ name: displayName || rawFile.name, size: rawFile.size, raw: rawFile });
+}
+
 function addFile(file) {
     if (file.size > maxMb.value * 1024 * 1024) {
         ElMessage.warning(`「${file.name}」超过 ${maxMb.value}MB，未添加`);
@@ -276,6 +289,21 @@ function addFile(file) {
         return;
     }
     files.value.push({ name: file.name, size: file.size, raw: file.raw });
+}
+
+// 粘贴截图 / 拖入文件（与选择文件共用校验）
+function onPaste(e) {
+    const items = [...(e.clipboardData?.files || [])];
+    if (items.length === 0) return;
+    e.preventDefault();
+    items.forEach((f) => acceptRaw(f, f.name.startsWith('image') ? `截图-${new Date().toTimeString().slice(0, 8).replaceAll(':', '')}.png` : undefined));
+}
+
+const dragOver = ref(false);
+function onDrop(e) {
+    dragOver.value = false;
+    const dropped = [...(e.dataTransfer?.files || [])];
+    dropped.forEach((f) => acceptRaw(f));
 }
 
 function formatSize(bytes) {
@@ -362,6 +390,11 @@ onMounted(async () => {
 }
 .reply-wrap {
     position: relative;
+    border-radius: 6px;
+    transition: box-shadow 0.15s ease;
+}
+.reply-wrap.drag-over {
+    box-shadow: 0 0 0 2px var(--el-color-primary);
 }
 .mention-panel {
     position: absolute;

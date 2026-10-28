@@ -69,7 +69,9 @@
                     </div>
 
                     <ChatArea :replies="displayReplies" />
-                    <ReplyBox :ticket-id="ticket.id" @sent="load" />
+                    <div class="reply-sticky">
+                        <ReplyBox :ticket-id="ticket.id" @sent="load" />
+                    </div>
                 </el-card>
             </el-col>
 
@@ -350,6 +352,20 @@ watch(() => route.params.id, (id) => {
 </script>
 
 <style scoped>
+.reply-sticky {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: var(--el-bg-color);
+    border-top: 1px solid var(--el-border-color-lighter);
+    padding-top: 10px;
+}
+
+@media (max-width: 768px) {
+    .reply-sticky {
+        bottom: calc(58px + env(safe-area-inset-bottom));
+    }
+}
 .head-title {
     font-weight: 600;
     display: inline-block;

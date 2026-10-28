@@ -1,5 +1,5 @@
 <template>
-    <div v-loading="loading">
+    <div>
         <div class="toolbar">
             <span class="toolbar-label">统计区间</span>
             <el-radio-group v-model="days" size="small" @change="load">
@@ -19,6 +19,21 @@
             </span>
         </div>
 
+        <template v-if="loading && ! stats">
+            <el-row :gutter="16">
+                <el-col :xs="12" :sm="6" v-for="i in 4" :key="i">
+                    <el-card><el-skeleton :rows="1" animated /></el-card>
+                </el-col>
+            </el-row>
+            <el-row :gutter="16" style="margin-top: 16px">
+                <el-col :xs="24">
+                    <el-card><el-skeleton :rows="5" animated /></el-card>
+                </el-col>
+            </el-row>
+        </template>
+
+        <template v-else>
+        <div v-loading="loading" element-loading-text="刷新中…" element-loading-background="transparent" style="min-height: 200px">
         <el-row :gutter="16">
             <el-col :xs="12" :sm="6" v-for="c in cards" :key="c.label">
                 <el-card>
@@ -48,6 +63,9 @@
                 </el-card>
             </el-col>
         </el-row>
+
+        </div>
+        </template>
 
         <!-- 评价明细 -->
         <el-dialog v-model="ratingsDialog" :title="`${ratingsAgent} 的评价明细`" width="640px">

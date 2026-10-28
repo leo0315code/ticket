@@ -7,6 +7,7 @@
                 <el-radio-button :value="30">近 30 天</el-radio-button>
                 <el-radio-button :value="90">近 90 天</el-radio-button>
             </el-radio-group>
+            <el-button size="small" :loading="exporting" @click="exportCsv">导出 CSV</el-button>
             <span v-if="stats?.range" class="toolbar-tip">
                 新增 {{ stats.range.new }} · 关闭 {{ stats.range.closed }} · 首次响应合规
                 <b>{{ stats.range.sla_rate !== null ? stats.range.sla_rate + '%' : '—' }}</b>
@@ -93,12 +94,32 @@ import * as echarts from 'echarts';
 import http from '../api';
 import { ticketPath } from '../paths';
 import { STATUS_MAP, PRIORITY_MAP } from '../constants';
+import { ElMessage } from 'element-plus';
+import { notifyError } from '../notify';
 
 const stats = ref(null);
 const ratingsDialog = ref(false);
 const ratingsAgent = ref('');
 const ratingRows = ref([]);
 const ratingsLoading = ref(false);
+
+async function exportCsv() {
+    exporting.value = true;
+    try {
+        const { data } = await http.get('/stats/export', { params: { days: days.value }, responseType: 'blob' });
+        const url = URL.createObjectURL(data);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `工单统计-近${days.value}天.csv`;
+        a.click();
+        URL.revokeObjectURL(url);
+        ElMessage.success('已导出 CSV');
+    } catch {
+        notifyError('导出失败');
+    } finally {
+        exporting.value = false;
+    }
+}
 
 async function showRatings(row) {
     ratingsAgent.value = row.name;
@@ -113,6 +134,7 @@ async function showRatings(row) {
 }
 const loading = ref(true);
 const days = ref(30);
+const exporting = ref(false);
 const trendRef = ref();
 const statusRef = ref();
 const priorityRef = ref();

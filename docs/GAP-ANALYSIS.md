@@ -880,7 +880,10 @@ faqs                                -- 直接扩，不建 kb_articles
   - 自动注册：手机号验证通过但库里没有该号时直接建号（昵称「用户+后 4 位」、登录名 `p+手机号`、随机密码、角色 user），再次登录复用同一账号；「开放注册」关闭时拒绝自动建号（403），已有账号不受影响。微信仍要求先绑定，避免扫码即建号产生垃圾账号。
   - 安全：停用账号在任一登录方式下都 403；AppSecret 接口只回显“是否已设置”，留空保存不会覆盖。
 
-### 13.4 验证
+### - **新工单自动分配**（v2.36）：分类可设默认受理人；后台「系统设置 → 生命周期」可开启自动分配（默认客服优先，否则按未结量最少的客服）；指派后写日志并通知。
+- **关联工单**（v2.36）：双向关联（合并之外补关联），详情页右侧卡片按编号关联/解除/跳转，列表不查关联避免 N+1。
+- **统计导出 CSV**（v2.36）：`GET /api/stats/export?days=` 导出按天明细 + 坐席绩效（BOM 头 Excel 直开），看板工具条一键下载；权限沿用 `stats.view`。
+13.4 验证
 
 - `php artisan test`：**135 passed / 574 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条、`LoginMethodTest` 15 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。

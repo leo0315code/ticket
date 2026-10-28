@@ -101,6 +101,7 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
     Route::delete('/canned-responses/{cannedResponse}', [CannedResponseController::class, 'destroy'])->middleware('permission:canned.manage');
     Route::post('/canned-responses/{cannedResponse}/touch', [CannedResponseController::class, 'touch'])->middleware('permission:canned.manage');
     Route::get('/stats', [StatsController::class, 'index'])->middleware('permission:stats.view');
+    Route::get('stats/export', [StatsController::class, 'export'])->middleware('permission:stats.view');
     Route::get('/stats/ratings', [StatsController::class, 'ratings'])->middleware('permission:stats.view');
 
     // 内容维护

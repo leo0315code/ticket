@@ -105,6 +105,61 @@ class StatsController extends Controller
         ]);
     }
 
+    /** 导出统计 CSV：按天的新增/关闭 + 区间汇总 + 坐席绩效 */
+    public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $days = in_array($request->integer('days'), [7, 30, 90], true) ? $request->integer('days') : 30;
+        $from = now()->subDays($days - 1)->startOfDay();
+        $filename = "工单统计-近{$days}天-".now()->format('Ymd-His').'.csv';
+
+        return response()->streamDownload(function () use ($days, $from) {
+            $out = fopen('php://output', 'w');
+            fwrite($out, "\xEF\xBB\xBF");
+
+            fputcsv($out, ['按天明细']);
+            fputcsv($out, ['日期', '新增', '关闭', '首次响应数', 'SLA 达标数']);
+            for ($i = 0; $i < $days; $i++) {
+                $day = (clone $from)->addDays($i);
+                $responded = Ticket::whereDate('created_at', $day)
+                    ->whereNotNull('first_response_at')->whereNotNull('sla_due_at');
+                fputcsv($out, [
+                    $day->format('Y-m-d'),
+                    Ticket::whereDate('created_at', $day)->count(),
+                    Ticket::whereDate('closed_at', $day)->count(),
+                    (clone $responded)->count(),
+                    (clone $responded)->whereColumn('first_response_at', '<=', 'sla_due_at')->count(),
+                ]);
+            }
+
+            fputcsv($out, []);
+            fputcsv($out, ['坐席绩效（全量）']);
+            fputcsv($out, ['客服', '受理数', '已关闭', '平均首次响应(分钟)', '满意度均分']);
+
+            $responseByAgent = Ticket::whereNotNull('agent_id')->whereNotNull('first_response_at')
+                ->get(['agent_id', 'created_at', 'first_response_at'])
+                ->groupBy('agent_id')
+                ->map(fn ($rows) => $rows->avg(fn ($t) => $t->created_at->diffInMinutes($t->first_response_at)));
+            $ratingByAgent = Ticket::whereNotNull('agent_id')->whereNotNull('rating')
+                ->groupBy('agent_id')->selectRaw('agent_id, AVG(rating) as avg_rating')->pluck('avg_rating', 'agent_id');
+
+            User::staff()
+                ->withCount([
+                    'assignedTickets as assigned_count',
+                    'assignedTickets as closed_count' => fn ($q) => $q->where('status', 'closed'),
+                ])->get()->each(function ($u) use ($out, $responseByAgent, $ratingByAgent) {
+                    fputcsv($out, [
+                        $u->name,
+                        (int) $u->assigned_count,
+                        (int) $u->closed_count,
+                        isset($responseByAgent[$u->id]) ? round($responseByAgent[$u->id], 1) : '',
+                        isset($ratingByAgent[$u->id]) ? round((float) $ratingByAgent[$u->id], 1) : '',
+                    ]);
+                });
+
+            fclose($out);
+        }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
+    }
+
     /** 某客服的评价明细（staff）：已评价工单列表，按评分升序（差评在前） */
     public function ratings(Request $request): JsonResponse
     {

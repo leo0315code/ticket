@@ -14,6 +14,19 @@ import './app.css';
 initTheme();
 
 const app = createApp(App);
+
+// 开发环境：给 "prop title 传 null" 这类告警补组件调用栈，便于定位来源（生产构建自动剥离）
+if (import.meta.env.DEV) {
+    const originalWarn = console.warn;
+    console.warn = (...args) => {
+        if (String(args[0] || '').includes('type check failed for prop "title"')) {
+            originalWarn.apply(console, args);
+            console.trace('[title=null 告警来源堆栈]');
+            return;
+        }
+        originalWarn.apply(console, args);
+    };
+}
 app.use(createPinia());
 app.use(router);
 app.use(ElementPlus, { locale: zhCn });

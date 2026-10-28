@@ -96,7 +96,7 @@
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, reactive, ref } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { ElMessage } from 'element-plus';
 import { notifyError } from '../../notify';
 import { CircleCloseFilled } from '@element-plus/icons-vue';
@@ -112,6 +112,35 @@ const emit = defineEmits(['sent']);
 
 const auth = useAuthStore();
 const reply = ref('');
+
+// ---- 草稿自动保存（按工单隔离，发送成功或清空后删除） ----
+const draftKey = computed(() => `ticket-draft:${props.ticketId}`);
+let draftTimer = null;
+function saveDraft() {
+    clearTimeout(draftTimer);
+    draftTimer = setTimeout(() => {
+        if (reply.value.trim()) {
+            localStorage.setItem(draftKey.value, JSON.stringify({ content: reply.value, is_internal: isInternal.value }));
+        } else {
+            localStorage.removeItem(draftKey.value);
+        }
+    }, 400);
+}
+function restoreDraft() {
+    try {
+        const raw = localStorage.getItem(draftKey.value);
+        if (! raw) return;
+        const draft = JSON.parse(raw);
+        if (draft?.content) {
+            reply.value = draft.content;
+            if (auth.isStaff && draft.is_internal) isInternal.value = true;
+            ElMessage({ message: '已恢复未发送的草稿', type: 'info', duration: 2000 });
+        }
+    } catch { /* 损坏的草稿直接忽略 */ }
+}
+function clearDraft() {
+    localStorage.removeItem(draftKey.value);
+}
 const files = ref([]);
 const sending = ref(false);
 const uploading = ref(false);
@@ -266,6 +295,7 @@ async function send() {
             is_internal: auth.isStaff ? isInternal.value : false,
         });
         reply.value = '';
+        clearDraft();
 
         if (files.value.length > 0) {
             uploading.value = true;
@@ -292,8 +322,11 @@ async function send() {
     }
 }
 
+watch(reply, () => saveDraft());
+watch(isInternal, () => saveDraft());
+
 onMounted(async () => {
-    nextTick(() => textarea()?.addEventListener('keydown', onKeydown));
+    restoreDraft();
     loadCanned();
     maxMb.value = (await loadMeta()).attach_max_mb;
 });

@@ -1,36 +1,68 @@
 <template>
     <div class="chat">
+        <template v-for="item in items" :key="item.key">
+        <div v-if="item.type === 'divider'" class="chat-divider">
+            <span>{{ item.label }}</span>
+        </div>
         <div
-            v-for="r in replies"
-            :key="r.id"
+            v-else
+            :data-id="item.r.id"
             class="chat-row"
-            :class="{ mine: r.user.id === auth.user?.id, internal: r.is_internal }"
+            :class="{ mine: item.r.user.id === auth.user?.id, internal: item.r.is_internal }"
         >
-            <el-avatar :size="34" :style="{ background: avatarColor(r.user.name) }">{{ r.user.name?.[0] }}</el-avatar>
+            <el-avatar :size="34" :style="{ background: avatarColor(item.r.user.name) }">{{ item.r.user.name?.[0] }}</el-avatar>
             <div class="chat-main">
                 <div class="chat-meta">
-                    <b>{{ r.user.name }}</b>
-                    <el-tag v-if="r.is_internal" type="warning" size="small" effect="plain">内部备注</el-tag>
-                    <el-tag v-else-if="r.user.role !== 'user'" type="primary" size="small" effect="plain">
-                        {{ r.user.role === 'admin' ? '管理员' : '客服' }}
+                    <b>{{ item.r.user.name }}</b>
+                    <el-tag v-if="item.r.is_internal" type="warning" size="small" effect="plain">内部备注</el-tag>
+                    <el-tag v-else-if="item.r.user.role !== 'user'" type="primary" size="small" effect="plain">
+                        {{ item.r.user.role === 'admin' ? '管理员' : '客服' }}
                     </el-tag>
-                    <el-tooltip :content="r.created_at" placement="top">
-                        <span class="time">{{ timeAgo(r.created_at) }}</span>
+                    <el-tooltip :content="item.r.created_at" placement="top">
+                        <span class="time">{{ timeAgo(item.r.created_at) }}</span>
                     </el-tooltip>
                 </div>
-                <div class="bubble" :class="{ staff: r.user.role !== 'user', mine: r.user.id === auth.user?.id, internal: r.is_internal }">{{ r.content }}</div>
+                <div class="bubble" :class="{ staff: item.r.user.role !== 'user', mine: item.r.user.id === auth.user?.id, internal: item.r.is_internal }">{{ item.r.content }}</div>
             </div>
         </div>
+        </template>
     </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useAuthStore } from '../../stores/auth';
 import { avatarColor } from '../../utils/avatar';
 import { timeAgo } from '../../time';
 
-defineProps({ replies: { type: Array, default: () => [] } });
+const props = defineProps({ replies: { type: Array, default: () => [] } });
 const auth = useAuthStore();
+
+function dayLabel(dateStr) {
+    const d = new Date(String(dateStr).replace(' ', 'T'));
+    const now = new Date();
+    const startOf = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+    const diff = Math.round((startOf(now) - startOf(d)) / 86400000);
+    if (diff === 0) return '今天';
+    if (diff === 1) return '昨天';
+    if (d.getFullYear() === now.getFullYear()) return `${d.getMonth() + 1}月${d.getDate()}日`;
+    return `${d.getFullYear()}年${d.getMonth() + 1}月${d.getDate()}日`;
+}
+
+// 在相邻两条不同日期的回复之间插入日期分隔条
+const items = computed(() => {
+    const out = [];
+    let lastDay = null;
+    for (const r of props.replies) {
+        const day = String(r.created_at || '').slice(0, 10);
+        if (day && day !== lastDay) {
+            out.push({ type: 'divider', key: `d-${day}-${r.id}`, label: dayLabel(r.created_at) });
+            lastDay = day;
+        }
+        out.push({ type: 'reply', key: r.id, r });
+    }
+    return out;
+});
 </script>
 
 <style scoped>
@@ -39,6 +71,21 @@ const auth = useAuthStore();
     flex-direction: column;
     gap: 16px;
     padding: 4px 0;
+}
+.chat-divider {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--el-text-color-secondary);
+    font-size: 12px;
+    margin: 4px 0;
+}
+.chat-divider::before,
+.chat-divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--el-border-color-lighter);
 }
 .chat-row {
     display: flex;

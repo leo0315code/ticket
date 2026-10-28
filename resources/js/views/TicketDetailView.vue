@@ -81,6 +81,27 @@
                     @saved="onOpsSaved"
                 />
 
+                <el-card v-if="auth.isStaff" style="margin-top: 16px">
+                    <template #header>
+                        <span>关联工单</span>
+                        <span v-if="ticket.related?.length" class="rel-count">{{ ticket.related.length }}</span>
+                    </template>
+                    <div v-if="ticket.related?.length" class="rel-list">
+                        <div v-for="r in ticket.related" :key="r.id" class="rel-row">
+                            <el-link type="primary" class="rel-link" @click="$router.push(ticketPath(r.id))">
+                                {{ r.no }} · {{ r.title }}
+                            </el-link>
+                            <el-tag size="small" :type="r.status === 'closed' ? 'info' : 'primary'">{{ STATUS_MAP[r.status] || r.status }}</el-tag>
+                            <el-button text size="small" type="danger" @click="unlinkTicket(r)">解除</el-button>
+                        </div>
+                    </div>
+                    <el-text v-else type="info" size="small">暂无关联，可把同类问题串起来</el-text>
+                    <div class="rel-add">
+                        <el-input v-model="linkNo" size="small" placeholder="工单编号，如 TK-20261027-0001" style="flex: 1" @keyup.enter="linkTicket" />
+                        <el-button size="small" :loading="linking" @click="linkTicket">关联</el-button>
+                    </div>
+                </el-card>
+
                 <el-card v-if="ticket.resolved_at || ticket.closed_at" header="时间记录" style="margin-top: 16px">
                     <p v-if="ticket.resolved_at">解决时间：{{ ticket.resolved_at }}</p>
                     <p v-if="ticket.closed_at" style="margin: 0">关闭时间：{{ ticket.closed_at }}</p>
@@ -127,6 +148,7 @@ import http from '../api';
 import { connectRealtime } from '../realtime';
 import { useAuthStore } from '../stores/auth';
 import { STATUS_MAP, PRIORITY_MAP } from '../constants';
+import { ticketPath } from '../paths';
 import ChatArea from '../components/ticket/ChatArea.vue';
 import ReplyBox from '../components/ticket/ReplyBox.vue';
 import OpsPanel from '../components/ticket/OpsPanel.vue';
@@ -155,6 +177,8 @@ const ratingSaving = ref(false);
 const reopening = ref(false);
 const watching = ref(false);
 const merging = ref(false);
+const linkNo = ref('');
+const linking = ref(false);
 const loadingEarlier = ref(false);
 const olderReplies = ref([]);
 const ratingForm = reactive({ rating: 0, comment: '' });
@@ -202,6 +226,32 @@ async function loadEarlier() {
 
 function onOpsSaved(data) {
     ticket.value = { ...ticket.value, ...data };
+}
+
+async function linkTicket() {
+    const no = linkNo.value.trim();
+    if (!no) return;
+    linking.value = true;
+    try {
+        const { data } = await http.post(`/tickets/${route.params.id}/links`, { target_no: no });
+        ticket.value = { ...ticket.value, related: data.related };
+        linkNo.value = '';
+        ElMessage.success('已关联');
+    } catch (e) {
+        notifyError(e.response?.data?.message || '关联失败');
+    } finally {
+        linking.value = false;
+    }
+}
+
+async function unlinkTicket(related) {
+    try {
+        const { data } = await http.delete(`/tickets/${route.params.id}/links/${related.id}`);
+        ticket.value = { ...ticket.value, related: data.related };
+        ElMessage.success('已解除关联');
+    } catch (e) {
+        notifyError(e.response?.data?.message || '解除失败');
+    }
 }
 
 async function mergeInto() {
@@ -334,4 +384,10 @@ watch(() => route.params.id, (id) => {
     color: var(--el-text-color-primary);
     line-height: 1.8;
 }
+
+.rel-count { margin-left: 6px; font-size: 12px; color: var(--el-text-color-secondary); }
+.rel-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.rel-row { display: flex; align-items: center; gap: 8px; }
+.rel-link { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; }
+.rel-add { display: flex; gap: 8px; margin-top: 10px; }
 </style>

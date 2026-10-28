@@ -74,6 +74,8 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
     Route::post('/tickets/{ticket}/rating', [TicketController::class, 'rate']);
     Route::post('/tickets/{ticket}/reopen', [TicketController::class, 'reopen']);
     Route::post('/tickets/{ticket}/merge', [TicketController::class, 'merge']);
+    Route::post('/tickets/{ticket}/links', [TicketController::class, 'link']);
+    Route::delete('/tickets/{ticket}/links/{related}', [TicketController::class, 'unlink']);
     Route::post('/tickets/{ticket}/watch', [TicketController::class, 'watch']);
     Route::delete('/tickets/{ticket}/watch', [TicketController::class, 'unwatch']);
     Route::apiResource('tickets.replies', ReplyController::class)->only(['index', 'store']);

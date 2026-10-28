@@ -97,6 +97,65 @@ class TicketController extends Controller
      * 合并工单：把来源单的回复/附件搬到目标单，来源单关闭并指向目标单。
      * 典型场景：客户重复提交、同一问题多人反馈。
      */
+    /** 关联工单：把另一张单与本单互相可见（不迁移内容，区别于合并） */
+    public function link(Request $request, Ticket $ticket): JsonResponse
+    {
+        $this->authorize('update', $ticket);
+        if (! $request->user()->hasPermission('ticket.assign')) {
+            return response()->json(['message' => '没有关联工单的权限'], 403);
+        }
+
+        $data = $request->validate(['target_no' => ['required', 'string', 'max:40']]);
+
+        $target = Ticket::where('no', $data['target_no'])->first();
+        if (! $target || $target->id === $ticket->id) {
+            return response()->json(['message' => '目标工单不存在'], 422);
+        }
+
+        $exists = DB::table('ticket_links')
+            ->where(fn ($q) => $q->where('ticket_id', $ticket->id)->where('related_ticket_id', $target->id))
+            ->orWhere(fn ($q) => $q->where('ticket_id', $target->id)->where('related_ticket_id', $ticket->id))
+            ->exists();
+        if ($exists) {
+            return response()->json(['message' => '两个工单已经关联过了'], 422);
+        }
+
+        DB::table('ticket_links')->insert([
+            'ticket_id' => $ticket->id,
+            'related_ticket_id' => $target->id,
+            'created_at' => now(),
+        ]);
+
+        $ticket->log('linked', $request->user()->id, "关联到 {$target->no}");
+        $target->log('linked', $request->user()->id, "被 {$ticket->no} 关联");
+
+        return $this->relatedResponse($ticket, '已关联');
+    }
+
+    public function unlink(Request $request, Ticket $ticket, Ticket $related): JsonResponse
+    {
+        $this->authorize('update', $ticket);
+        if (! $request->user()->hasPermission('ticket.assign')) {
+            return response()->json(['message' => '没有取消关联的权限'], 403);
+        }
+
+        DB::table('ticket_links')
+            ->where(fn ($q) => $q->where('ticket_id', $ticket->id)->where('related_ticket_id', $related->id))
+            ->orWhere(fn ($q) => $q->where('ticket_id', $related->id)->where('related_ticket_id', $ticket->id))
+            ->delete();
+
+        $ticket->log('unlinked', $request->user()->id, "取消关联 {$related->no}");
+
+        return $this->relatedResponse($ticket, '已取消关联');
+    }
+
+    private function relatedResponse(Ticket $ticket, string $message): JsonResponse
+    {
+        $related = $ticket->relatedList();
+
+        return response()->json(['message' => $message, 'related' => $related]);
+    }
+
     public function merge(Request $request, Ticket $ticket): JsonResponse
     {
         $this->authorize('update', $ticket);
@@ -176,7 +235,7 @@ class TicketController extends Controller
             $ticket->load(['logs' => fn ($q) => $q->with('user:id,name')->oldest()]);
         }
 
-        return response()->json(new TicketResource($ticket));
+        return response()->json((new TicketResource($ticket))->withRelated());
     }
 
     public function update(Request $request, Ticket $ticket): JsonResponse

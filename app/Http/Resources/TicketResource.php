@@ -7,6 +7,16 @@ use Illuminate\Http\Resources\Json\JsonResource;
 
 class TicketResource extends JsonResource
 {
+    private bool $withRelated = false;
+
+    /** 详情页才带关联列表，避免列表页 N+1 */
+    public function withRelated(): static
+    {
+        $this->withRelated = true;
+
+        return $this;
+    }
+
     public function toArray(Request $request): array
     {
         return [
@@ -32,6 +42,7 @@ class TicketResource extends JsonResource
             'resolution_overdue' => $this->isResolutionOverdue(),
             'first_response_at' => $this->first_response_at?->format('Y-m-d H:i'),
             'closed_reason' => $this->closed_reason,
+            'related' => $this->when($this->withRelated, fn () => $this->relatedList()),
             'merged_into' => $this->whenLoaded('mergedInto', fn () => [
                 'id' => $this->mergedInto->id,
                 'no' => $this->mergedInto->no,

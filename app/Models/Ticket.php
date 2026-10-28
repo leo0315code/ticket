@@ -40,6 +40,32 @@ class Ticket extends Model
         'low' => 72,
     ];
 
+    /** 我主动关联出去的工单 */
+    public function linksTo(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'ticket_links', 'ticket_id', 'related_ticket_id');
+    }
+
+    /** 反向：被哪些工单关联 */
+    public function linkedFrom(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(self::class, 'ticket_links', 'related_ticket_id', 'ticket_id');
+    }
+
+    /** 关联工单汇总（双向），返回 [{id,no,title,status}] */
+    public function relatedList(): array
+    {
+        $to = $this->linksTo()->get(['tickets.id', 'tickets.no', 'tickets.title', 'tickets.status']);
+        $from = $this->linkedFrom()->get(['tickets.id', 'tickets.no', 'tickets.title', 'tickets.status']);
+
+        return $to->merge($from)
+            ->unique('id')
+            ->sortByDesc('id')
+            ->map(fn (self $t) => $t->only(['id', 'no', 'title', 'status']))
+            ->values()
+            ->all();
+    }
+
     /** 未结工单状态（用于“手头活儿”统计/自动分配负载） */
     public const ACTIVE_STATUSES = ['open', 'in_progress', 'pending_resolved'];
 

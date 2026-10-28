@@ -192,6 +192,10 @@
         </el-form>
 
         <h4 class="section">工单生命周期</h4>
+        <el-form-item label="新工单自动分配">
+            <el-switch v-model="form.auto_assign" />
+            <span class="hint">开启后优先指派给分类的默认客服，否则给未结工单最少的客服</span>
+        </el-form-item>
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item label="待确认自动关闭">
                 <el-input-number v-model="form.auto_close_days" :min="1" :max="90" />
@@ -240,6 +244,7 @@ const form = reactive({
     business_hours_end: '18:00',
     business_hours_days: [1, 2, 3, 4, 5],
     business_timezone: 'Asia/Shanghai',
+    auto_assign: false,
     auto_close_days: 7,
     reopen_days: 14,
     reopen_limit: 3,

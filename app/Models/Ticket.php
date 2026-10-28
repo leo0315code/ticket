@@ -40,6 +40,31 @@ class Ticket extends Model
         'low' => 72,
     ];
 
+    /** 未结工单状态（用于“手头活儿”统计/自动分配负载） */
+    public const ACTIVE_STATUSES = ['open', 'in_progress', 'pending_resolved'];
+
+    /** 自动分配：优先分类默认客服（须在职且在 staff 角色），否则未结工单最少的客服 */
+    public static function pickAssignee(?Category $category): ?User
+    {
+        $staff = User::staff()->where('is_active', true)->get();
+
+        if ($staff->isEmpty()) {
+            return null;
+        }
+
+        if ($category?->default_agent_id && ($default = $staff->firstWhere('id', $category->default_agent_id))) {
+            return $default;
+        }
+
+        $activeCounts = self::whereIn('status', self::ACTIVE_STATUSES)
+            ->whereIn('agent_id', $staff->pluck('id'))
+            ->selectRaw('agent_id, COUNT(*) as c')
+            ->groupBy('agent_id')
+            ->pluck('c', 'agent_id');
+
+        return $staff->sortBy(fn (User $u) => (int) ($activeCounts[$u->id] ?? 0))->first();
+    }
+
     /** 按优先级取首次响应时限（后台「系统设置」可改，默认见 SLA_HOURS） */
     public static function slaHours(string $priority): int
     {

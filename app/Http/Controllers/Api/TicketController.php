@@ -58,11 +58,22 @@ class TicketController extends Controller
         ]), 30);
         $ticket->log('created', $request->user()->id, "创建工单【{$ticket->title}】");
 
+        // 自动分配（系统设置开启时）：分类默认客服 → 否则未结工单最少的客服
+        if (Settings::get('auto_assign', false) && $ticket->agent_id === null) {
+            if ($assignee = Ticket::pickAssignee($ticket->category)) {
+                $ticket->update(['agent_id' => $assignee->id, 'last_activity_at' => now()]);
+                $ticket->log('assigned', $request->user()->id, "自动分配给 {$assignee->name}");
+                $assignee->notify(new TicketEventNotification(
+                    $ticket, "新工单自动分配给你：{$ticket->title}", 'assigned'
+                ));
+            }
+        }
+
         // 通知全部客服：有新工单
         Notification::send(User::staff()->get(),
             new TicketEventNotification($ticket, "{$request->user()->name} 提交了新工单：{$ticket->title}", 'created'));
 
-        return response()->json(new TicketResource($ticket->load('category')), 201);
+        return response()->json(new TicketResource($ticket->load(['category', 'agent:id,name'])), 201);
     }
 
     /** 关注/取消关注工单（参与者均可） */

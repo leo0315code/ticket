@@ -11,6 +11,9 @@
             <el-table-column prop="id" label="ID" width="60" />
             <el-table-column prop="name" label="名称" width="160" />
             <el-table-column prop="description" label="描述" />
+            <el-table-column label="默认客服" width="110">
+                <template #default="{ row }">{{ row.default_agent?.name || '—' }}</template>
+            </el-table-column>
             <el-table-column label="操作" width="140">
                 <template #default="{ row }">
                     <el-button link type="primary" @click="openDialog(row)">编辑</el-button>
@@ -30,6 +33,12 @@
                 </el-form-item>
                 <el-form-item label="描述">
                     <el-input v-model="form.description" maxlength="200" />
+                </el-form-item>
+                <el-form-item label="默认客服">
+                    <el-select v-model="form.default_agent_id" placeholder="不指定" clearable style="width: 100%">
+                        <el-option v-for="a in agents" :key="a.id" :label="a.name" :value="a.id" />
+                    </el-select>
+                    <span class="hint">开启「新工单自动分配」时，该分类的新工单优先给 TA</span>
                 </el-form-item>
             </el-form>
             <template #footer>
@@ -51,7 +60,15 @@ const loading = ref(true);
 const dialog = ref(false);
 const saving = ref(false);
 const editing = ref(null);
-const form = reactive({ name: '', description: '' });
+const agents = ref([]);
+const form = reactive({ name: '', description: '', default_agent_id: null });
+
+async function loadAgents() {
+    try {
+        const { data } = await http.get('/agents');
+        agents.value = data.data ?? data;
+    } catch { /* 无权时保持空 */ }
+}
 
 async function load() {
     loading.value = true;
@@ -66,6 +83,7 @@ async function load() {
 function openDialog(row = null) {
     editing.value = row;
     form.name = row?.name || '';
+    form.default_agent_id = row?.default_agent_id ?? null;
     form.description = row?.description || '';
     dialog.value = true;
 }
@@ -98,7 +116,7 @@ async function remove(row) {
     await load();
 }
 
-onMounted(load);
+onMounted(() => { load(); loadAgents(); });
 </script>
 
 <style scoped>
@@ -106,5 +124,13 @@ onMounted(load);
     display: flex;
     justify-content: space-between;
     align-items: center;
+}
+</style>
+
+<style scoped>
+.hint {
+    margin-left: 8px;
+    font-size: 12px;
+    color: var(--el-text-color-secondary);
 }
 </style>

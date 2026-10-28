@@ -14,7 +14,7 @@ class CategoryController extends Controller
 {
     public function index(): AnonymousResourceCollection
     {
-        return CategoryResource::collection(Category::orderBy('id')->get());
+        return CategoryResource::collection(Category::with('defaultAgent:id,name')->orderBy('id')->get());
     }
 
     public function store(Request $request): JsonResponse
@@ -22,9 +22,12 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:50', 'unique:categories,name'],
             'description' => ['nullable', 'string', 'max:200'],
+            'default_agent_id' => ['nullable', Rule::exists('users', 'id')->where('is_active', true)],
         ]);
 
-        return response()->json(new CategoryResource(Category::create($data)), 201);
+        $category = Category::create($data);
+
+        return response()->json(new CategoryResource($category->load('defaultAgent:id,name')), 201);
     }
 
     public function update(Request $request, Category $category): JsonResponse
@@ -32,11 +35,12 @@ class CategoryController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:50', Rule::unique('categories')->ignore($category->id)],
             'description' => ['nullable', 'string', 'max:200'],
+            'default_agent_id' => ['nullable', Rule::exists('users', 'id')->where('is_active', true)],
         ]);
 
         $category->update($data);
 
-        return response()->json(new CategoryResource($category));
+        return response()->json(new CategoryResource($category->load('defaultAgent:id,name')));
     }
 
     public function destroy(Category $category): JsonResponse

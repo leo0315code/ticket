@@ -20,6 +20,7 @@ class Settings
         'business_hours_end' => '18:00',
         'business_hours_days' => [1, 2, 3, 4, 5],
         'business_timezone' => 'Asia/Shanghai',
+        'auto_assign' => false,
         'auto_close_days' => 7,
         'reopen_days' => 14,
         'reopen_limit' => 3,

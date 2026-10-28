@@ -13,6 +13,8 @@ class CategoryResource extends JsonResource
             'id' => $this->id,
             'name' => $this->name,
             'description' => $this->description,
+            'default_agent_id' => $this->default_agent_id,
+            'default_agent' => $this->whenLoaded('defaultAgent', fn () => $this->defaultAgent?->only(['id', 'name'])),
         ];
     }
 }

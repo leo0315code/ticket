@@ -1,5 +1,39 @@
 <template>
-    <el-card style="max-width: 860px">
+    <div style="max-width: 860px">
+    <el-card v-if="auth.can('faq.manage')" style="margin-bottom: 14px">
+        <template #header>
+            <div class="flex-between">
+                <span>搜索分析（近 30 天 · 共 {{ searchStats.total_searches ?? 0 }} 次搜索）</span>
+                <el-button size="small" text @click="toggleStats">{{ showStats ? '收起' : '展开' }}</el-button>
+            </div>
+        </template>
+        <template v-if="showStats">
+            <div v-loading="statsLoading">
+                <el-text type="info" size="small">客户搜了却没结果的词——优先为它们补 FAQ</el-text>
+                <el-table :data="searchStats.missed" size="small" style="margin: 8px 0 14px">
+                    <el-table-column prop="keyword" label="未命中搜索词" />
+                    <el-table-column prop="times" label="次数" width="80" align="center" />
+                    <el-table-column prop="last_at" label="最近一次" width="170" />
+                    <el-table-column width="100" align="center">
+                        <template #default="{ row }">
+                            <el-button size="small" text type="primary" @click="createFromKeyword(row.keyword)">补一篇</el-button>
+                        </template>
+                    </el-table-column>
+                    <template #empty><el-text type="info" size="small">暂无未命中搜索，不错</el-text></template>
+                </el-table>
+                <el-text type="info" size="small">被点"没用"最多的条目——考虑改写</el-text>
+                <el-table :data="searchStats.unhelpful" size="small" style="margin-top: 8px">
+                    <el-table-column prop="question" label="问题" show-overflow-tooltip />
+                    <el-table-column label="👍/👎" width="110" align="center">
+                        <template #default="{ row }">{{ row.helpful_yes }} / {{ row.helpful_no }}</template>
+                    </el-table-column>
+                    <el-table-column prop="views" label="阅读" width="80" align="center" />
+                    <template #empty><el-text type="info" size="small">暂无差评</el-text></template>
+                </el-table>
+            </div>
+        </template>
+    </el-card>
+    <el-card>
         <template #header>
             <div class="card-header">
                 <span>帮助中心 / 常见问题</span>
@@ -76,6 +110,7 @@
             </template>
         </el-dialog>
     </el-card>
+    </div>
 </template>
 
 <script setup>
@@ -85,6 +120,30 @@ import { notifyError } from '../notify';
 import { Search } from '@element-plus/icons-vue';
 import http from '../api';
 import { useAuthStore } from '../stores/auth';
+
+const showStats = ref(false);
+const statsLoading = ref(false);
+const searchStats = ref({ missed: [], unhelpful: [], total_searches: 0 });
+
+async function toggleStats() {
+    showStats.value = !showStats.value;
+    if (!showStats.value) return;
+    statsLoading.value = true;
+    try {
+        const { data } = await http.get('/faqs/search-stats');
+        searchStats.value = data;
+    } catch (e) {
+        notifyError(e.response?.data?.message || '加载失败');
+    } finally {
+        statsLoading.value = false;
+    }
+}
+
+function createFromKeyword(keyword) {
+    // 预填问题，直接打开新建弹窗
+    openDialog(null);
+    form.question = `关于「${keyword}」`;
+}
 
 const auth = useAuthStore();
 const faqs = ref([]);

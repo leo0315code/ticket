@@ -16,8 +16,8 @@ class AutoAssignTest extends ApiTestCase
     {
         Settings::put(['auto_assign' => true]);
 
-        $agentA = $this->makeUser('agent');
-        $agentB = $this->makeUser('agent');
+        $agentA = $this->makeUser('agent', ['last_seen_at' => now()]);
+        $agentB = $this->makeUser('agent', ['last_seen_at' => now()]);
         $category = Category::create(['name' => '支付问题', 'default_agent_id' => $agentB->id]);
         $customer = $this->makeUser();
 
@@ -33,8 +33,8 @@ class AutoAssignTest extends ApiTestCase
     {
         Settings::put(['auto_assign' => true]);
 
-        $busy = $this->makeUser('agent');
-        $idle = $this->makeUser('agent');
+        $busy = $this->makeUser('agent', ['last_seen_at' => now()]);
+        $idle = $this->makeUser('agent', ['last_seen_at' => now()]);
         $category = Category::create(['name' => '售后']);
 
         Ticket::factory()->count(3)->create([
@@ -60,9 +60,9 @@ class AutoAssignTest extends ApiTestCase
     {
         Settings::put(['auto_assign' => true]);
 
-        $disabled = $this->makeUser('agent');
+        $disabled = $this->makeUser('agent', ['last_seen_at' => now()]);
         $disabled->update(['is_active' => false]);
-        $other = $this->makeUser('agent');
+        $other = $this->makeUser('agent', ['last_seen_at' => now()]);
         $category = Category::create(['name' => '物流', 'default_agent_id' => $disabled->id]);
 
         $this->actingAsApi($this->makeUser())->postJson('/api/tickets', [

@@ -27,6 +27,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(\App\Http\Middleware\SecurityHeaders::class);
         // API 请求里记录用户活跃时间（在线状态）
         $middleware->appendToGroup('api', \App\Http\Middleware\TrackPresence::class);
+        // 维护模式：开启后非管理员只读
+        $middleware->appendToGroup('api', \App\Http\Middleware\CheckMaintenanceMode::class);
 
         $middleware->alias([
             'staff' => \App\Http\Middleware\EnsureUserIsStaff::class,

@@ -1,7 +1,7 @@
 import http from './api';
 
 // 公开的站点元信息（站点名称、注册开关、附件上限）：未登录也要能拿到
-const FALLBACK = { site_name: '工单支持中心', allow_register: true, attach_max_mb: 10, attach_max_count: 10, phone_login_enabled: false, wechat_login_enabled: false, wechat_mode: 'open', support_phone: '', work_hours_enabled: false, work_days: '1,2,3,4,5', work_hours_start: '09:00', work_hours_end: '18:00', agents_online: false, require_online_agent: false };
+const FALLBACK = { site_name: '工单支持中心', allow_register: true, attach_max_mb: 10, attach_max_count: 10, phone_login_enabled: false, wechat_login_enabled: false, wechat_mode: 'open', support_phone: '', work_hours_enabled: false, work_days: '1,2,3,4,5', work_hours_start: '09:00', work_hours_end: '18:00', agents_online: false, require_online_agent: false, maintenance_mode: false, maintenance_message: '' };
 
 let cache = null;
 let pending = null;

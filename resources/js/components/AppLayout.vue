@@ -62,6 +62,13 @@
             </el-dropdown>
         </el-header>
         <el-main>
+            <el-alert
+                v-if="meta().maintenance_mode"
+                type="warning"
+                :title="auth.isAdmin ? ('维护模式已开启：'+meta().maintenance_message+'（管理员不受影响）') : meta().maintenance_message"
+                :closable="false"
+                class="maintenance-banner"
+            />
             <router-view v-slot="{ Component }">
                 <transition name="page-fade" mode="out-in">
                     <component :is="Component" />
@@ -96,6 +103,7 @@ import { useAuthStore } from '../stores/auth';
 import { toggleTheme } from '../theme';
 import { avatarColor } from '../utils/avatar';
 import { adminPath } from '../paths';
+import { meta } from '../meta';
 import { ROLE_MAP } from '../constants';
 
 const auth = useAuthStore();
@@ -266,4 +274,5 @@ async function onCommand(cmd) {
         padding-bottom: calc(70px + env(safe-area-inset-bottom));
     }
 }
+.maintenance-banner { margin-bottom: 12px; }
 </style>

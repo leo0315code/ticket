@@ -27,6 +27,8 @@ class MetaController extends Controller
             'work_hours_end' => (string) Settings::get('business_hours_end', '18:00'),
             'agents_online' => \App\Models\User::onlineStaff()->exists(),
             'require_online_agent' => (bool) Settings::get('require_online_agent'),
+            'maintenance_mode' => (bool) Settings::get('maintenance_mode', false),
+            'maintenance_message' => Settings::get('maintenance_message'),
         ]);
     }
 }

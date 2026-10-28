@@ -22,6 +22,13 @@
         </header>
 
         <main class="help-main">
+            <el-alert
+                v-if="site.maintenance_mode"
+                type="warning"
+                :title="site.maintenance_message"
+                :closable="false"
+                class="maintenance-banner"
+            />
             <section class="hero">
                 <div class="hero-badge">帮助中心</div>
                 <h1>我们能帮你做什么？</h1>
@@ -402,4 +409,5 @@ onMounted(async () => {
 .hero-phone-time {
     color: var(--el-text-color-placeholder);
 }
+.maintenance-banner { max-width: 860px; margin: 12px auto 0; }
 </style>

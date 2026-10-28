@@ -23,6 +23,9 @@ class Settings
         'auto_assign' => false,
         // 提交拦截：服务时间复用 business_hours_*，此处只放两个新增开关
         'require_online_agent' => false,
+        // 维护模式
+        'maintenance_mode' => false,
+        'maintenance_message' => '系统维护中，预计很快恢复。期间您可以浏览帮助中心，但暂时无法提交或修改工单。',
         'support_phone' => '',
         'auto_close_days' => 7,
         'reopen_days' => 14,

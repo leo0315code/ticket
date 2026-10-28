@@ -116,6 +116,7 @@ const form = reactive({ title: '', content: '', priority: 'medium', category_id:
 const blockReason = computed(() => {
     if (auth.isStaff) return null;
     const m = meta();
+    if (m.maintenance_mode) return m.maintenance_message || '系统维护中，暂时无法提交工单。';
     const phone = m.support_phone ? `，如有紧急问题请拨打 ${m.support_phone}` : '，请稍后再试';
     if (m.work_hours_enabled) {
         const now = new Date();

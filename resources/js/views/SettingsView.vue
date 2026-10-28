@@ -235,6 +235,14 @@
         <el-form-item label="服务时间">
             <span class="hint">复用上方「按营业时间计算」的工作时间与工作日：开启后非服务时段同样拦截提单</span>
         </el-form-item>
+        <el-form-item label="维护模式">
+            <el-switch v-model="form.maintenance_mode" />
+            <span class="hint">开启后普通用户/游客只读（可看帮助中心与工单，不能提交或修改）；管理员不受影响</span>
+        </el-form-item>
+        <el-form-item label="维护提示语">
+            <el-input v-model="form.maintenance_message" maxlength="200" style="width: 420px" />
+            <span class="hint">维护期间对普通用户展示的提示</span>
+        </el-form-item>
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item label="待确认自动关闭">
                 <el-input-number v-model="form.auto_close_days" :min="1" :max="90" />
@@ -289,6 +297,8 @@ const form = reactive({
     auto_assign: false,
     require_online_agent: false,
     support_phone: '',
+    maintenance_mode: false,
+    maintenance_message: '',
     auto_close_days: 7,
     reopen_days: 14,
     reopen_limit: 3,

@@ -30,7 +30,7 @@
                     @click="goTicket(n)"
                 >
                     <div class="nf-msg">{{ n.message }}</div>
-                    <div class="nf-time">{{ n.created_at }}</div>
+                    <div class="nf-time">{{ /^\d{4}/.test(n.created_at) ? timeAgo(n.created_at) : n.created_at }}</div>
                 </div>
             </el-scrollbar>
             <div v-if="hasMore" class="nf-more">
@@ -47,6 +47,7 @@ import { Bell } from '@element-plus/icons-vue';
 import { ElNotification } from 'element-plus';
 import http from '../api';
 import { connectRealtime, fetchNotifications } from '../realtime';
+import { timeAgo } from '../time';
 import { ticketPath } from '../paths';
 import { playNotifySound } from '../utils/sound';
 

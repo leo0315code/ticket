@@ -42,14 +42,14 @@
                         <el-descriptions-item label="受理客服">{{ ticket.agent?.name || '未指派' }}</el-descriptions-item>
                         <el-descriptions-item label="创建时间">{{ ticket.created_at }}</el-descriptions-item>
                         <el-descriptions-item label="SLA 截止">
-                            <span v-if="ticket.sla_due_at" :style="ticket.overdue && !ticket.first_response_at ? 'color:#f56c6c;font-weight:600' : ''">
+                            <span v-if="ticket.sla_due_at" :style="ticket.overdue && !ticket.first_response_at ? 'color:var(--el-color-danger);font-weight:600' : ''">
                                 {{ ticket.sla_due_at }}{{ ticket.overdue && !ticket.first_response_at ? '（已超时）' : '' }}
                             </span>
                             <span v-else>-</span>
                         </el-descriptions-item>
                         <el-descriptions-item label="首次响应">{{ ticket.first_response_at || '未响应' }}</el-descriptions-item>
                         <el-descriptions-item label="解决期限">
-                            <span v-if="ticket.resolution_due_at" :style="ticket.resolution_overdue ? 'color:#f56c6c;font-weight:600' : ''">
+                            <span v-if="ticket.resolution_due_at" :style="ticket.resolution_overdue ? 'color:var(--el-color-danger);font-weight:600' : ''">
                                 {{ ticket.resolution_due_at }}{{ ticket.resolution_overdue ? '（已超期）' : '' }}
                             </span>
                             <span v-else>-</span>
@@ -69,7 +69,7 @@
                     </div>
 
                     <ChatArea :replies="displayReplies" />
-                    <div class="reply-sticky">
+                    <div class="reply-sticky" ref="bottomAnchor">
                         <ReplyBox :ticket-id="ticket.id" @sent="load" />
                     </div>
                 </el-card>
@@ -112,7 +112,7 @@
                 <el-card v-if="canRate" header="满意度评价" style="margin-top: 16px">
                     <div v-if="ticket.rating" style="line-height: 2">
                         <el-rate :model-value="ticket.rating" disabled />
-                        <div v-if="ticket.rating_comment" style="color: #606266">{{ ticket.rating_comment }}</div>
+                        <div v-if="ticket.rating_comment" style="color: var(--el-text-color-regular)">{{ ticket.rating_comment }}</div>
                     </div>
                     <template v-else>
                         <el-rate v-model="ratingForm.rating" show-text :texts="['很差', '较差', '一般', '满意', '非常满意']" style="margin-bottom: 8px" />
@@ -142,7 +142,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, nextTick, onMounted, reactive, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { notifyError } from '../notify';
@@ -182,6 +182,7 @@ const merging = ref(false);
 const linkNo = ref('');
 const linking = ref(false);
 const loadingEarlier = ref(false);
+const bottomAnchor = ref(null);
 const olderReplies = ref([]);
 const ratingForm = reactive({ rating: 0, comment: '' });
 
@@ -203,6 +204,7 @@ const canRate = computed(() =>
 async function load() {
     const { data } = await http.get(`/tickets/${route.params.id}`);
     ticket.value = data;
+    nextTick(() => bottomAnchor.value?.scrollIntoView({ behavior: 'smooth', block: 'end' }));
 }
 
 // 向前翻页：以当前已加载的最早一条为游标，避免新回复插入导致重复/遗漏

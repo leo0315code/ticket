@@ -48,3 +48,55 @@ html.dark .header {
         padding: 12px !important;
     }
 }
+
+/* ===== 全局细节打磨 ===== */
+
+/* 主题感知滚动条（WebKit） */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--el-border-color-dark, #d4d7de);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--el-text-color-secondary, #909399);
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+/* Firefox */
+* {
+    scrollbar-width: thin;
+    scrollbar-color: var(--el-border-color-dark, #d4d7de) transparent;
+}
+
+/* 文本选区颜色跟随主题 */
+::selection {
+    background: var(--el-color-primary-light-7);
+}
+html.dark ::selection {
+    background: var(--el-color-primary-dark-2);
+}
+
+/* 键盘导航焦点可见（不影响鼠标点击） */
+:focus-visible {
+    outline: 2px solid var(--el-color-primary);
+    outline-offset: 2px;
+}
+.el-button:focus:not(:focus-visible),
+.el-link:focus:not(:focus-visible) {
+    outline: none;
+}
+
+/* 弹窗在窄屏下不全屏贴边 */
+@media (max-width: 640px) {
+    .el-dialog {
+        width: calc(100% - 24px) !important;
+        margin-top: 8vh !important;
+    }
+    .el-message-box {
+        width: calc(100% - 32px) !important;
+    }
+}

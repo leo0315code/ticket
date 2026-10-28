@@ -21,7 +21,7 @@
                 <span class="attach-meta">{{ formatSize(a.size) }} · {{ a.user?.name }}</span>
             </div>
         </div>
-        <p v-if="ticket.attachments?.length === 0" style="color: #909399; margin: 0 0 8px">暂无附件</p>
+        <p v-if="ticket.attachments?.length === 0" style="color: var(--el-text-color-secondary); margin: 0 0 8px">暂无附件</p>
         <el-upload :show-file-list="false" :http-request="upload" multiple :disabled="reachedLimit">
             <el-button size="small" :loading="uploading" :disabled="reachedLimit">
                 上传附件（≤{{ maxMb }}MB）
@@ -123,7 +123,7 @@ async function upload({ file }) {
     padding: 6px 0;
 }
 .attach-meta {
-    color: #909399;
+    color: var(--el-text-color-secondary);
     font-size: 12px;
 }
 

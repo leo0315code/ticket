@@ -14,7 +14,9 @@
                     <el-tag v-else-if="r.user.role !== 'user'" type="primary" size="small" effect="plain">
                         {{ r.user.role === 'admin' ? '管理员' : '客服' }}
                     </el-tag>
-                    <span class="time">{{ r.created_at }}</span>
+                    <el-tooltip :content="r.created_at" placement="top">
+                        <span class="time">{{ timeAgo(r.created_at) }}</span>
+                    </el-tooltip>
                 </div>
                 <div class="bubble" :class="{ staff: r.user.role !== 'user', mine: r.user.id === auth.user?.id, internal: r.is_internal }">{{ r.content }}</div>
             </div>
@@ -25,6 +27,7 @@
 <script setup>
 import { useAuthStore } from '../../stores/auth';
 import { avatarColor } from '../../utils/avatar';
+import { timeAgo } from '../../time';
 
 defineProps({ replies: { type: Array, default: () => [] } });
 const auth = useAuthStore();

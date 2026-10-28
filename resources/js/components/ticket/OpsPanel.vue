@@ -28,7 +28,7 @@
     </el-card>
 
     <el-card v-else header="说明">
-        <p style="margin: 0; color: #909399; line-height: 1.8">
+        <p style="margin: 0; color: var(--el-text-color-secondary); line-height: 1.8">
             客服回复后工单状态变为「处理中」，请耐心等待；若问题已解决，客服会将状态更新为「待确认」并关闭工单。
         </p>
     </el-card>

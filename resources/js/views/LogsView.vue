@@ -18,7 +18,13 @@
         </el-form>
 
         <el-table :data="logs" v-loading="loading" stripe>
-            <el-table-column label="时间" width="150" prop="created_at" />
+            <el-table-column label="时间" width="120">
+                    <template #default="{ row }">
+                        <el-tooltip :content="row.created_at" placement="top">
+                            <span>{{ timeAgo(row.created_at) }}</span>
+                        </el-tooltip>
+                    </template>
+                </el-table-column>
             <el-table-column label="操作人" width="110">
                 <template #default="{ row }">{{ row.user?.name || '—' }}</template>
             </el-table-column>
@@ -64,7 +70,13 @@
                 </el-form>
 
                 <el-table :data="auditLogs" v-loading="auditLoading" stripe>
-                    <el-table-column label="时间" width="150" prop="created_at" />
+                    <el-table-column label="时间" width="120">
+                    <template #default="{ row }">
+                        <el-tooltip :content="row.created_at" placement="top">
+                            <span>{{ timeAgo(row.created_at) }}</span>
+                        </el-tooltip>
+                    </template>
+                </el-table-column>
                     <el-table-column label="操作人" width="120" prop="actor_name" />
                     <el-table-column label="动作" width="150">
                         <template #default="{ row }">
@@ -98,6 +110,7 @@
 
 <script setup>
 import { onMounted, reactive, ref } from 'vue';
+import { timeAgo } from '../time';
 import http from '../api';
 import { notifyError } from '../notify';
 import { ticketPath } from '../paths';

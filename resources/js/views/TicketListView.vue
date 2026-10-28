@@ -44,7 +44,7 @@
         </div>
         <el-form v-show="! isMobile || showFilters" inline class="filters" :class="{ expanded: isMobile }">
             <el-form-item label="关键字">
-                <el-input v-model="filters.keyword" placeholder="标题 / 工单号" clearable @keyup.enter="load(1)" style="width: 180px" />
+                <el-input v-model="filters.keyword" placeholder="标题 / 工单号" clearable @input="onKeywordInput" @keyup.enter="load(1)" style="width: 180px" />
             </el-form-item>
             <el-form-item v-if="! trashMode" label="状态">
                 <el-select v-model="filters.status" placeholder="全部" clearable style="width: 120px">
@@ -86,7 +86,7 @@
             <el-button size="small" type="primary" :disabled="!bulkAgentId" :loading="bulkLoading" @click="bulkAction('assign')">指派</el-button>
         </div>
 
-        <el-table :data="tickets" v-loading="loading" stripe @selection-change="(rows) => (selection = rows)">
+        <el-table :data="tickets" v-loading="loading" stripe row-class-name="ticket-row" @selection-change="(rows) => (selection = rows)" @row-click="onRowClick">
             <el-table-column v-if="auth.isStaff && ! trashMode" type="selection" width="42" />
             <el-table-column prop="no" label="工单号" width="160" class-name="hide-md" />
             <el-table-column prop="title" label="标题" min-width="220" show-overflow-tooltip>
@@ -127,7 +127,13 @@
                 </template>
             </el-table-column>
             <el-table-column prop="replies_count" label="回复" width="70" align="center" class-name="hide-md" />
-            <el-table-column prop="created_at" label="创建时间" width="150" class-name="hide-sm" />
+            <el-table-column label="创建时间" width="120" class-name="hide-sm">
+                <template #default="{ row }">
+                    <el-tooltip :content="row.created_at" placement="top">
+                        <span>{{ timeAgo(row.created_at) }}</span>
+                    </el-tooltip>
+                </template>
+            </el-table-column>
             <el-table-column v-if="trashMode" prop="deleted_at" label="删除时间" width="150" />
             <el-table-column v-if="trashMode" label="操作" width="90" fixed="right">
                 <template #default="{ row }">
@@ -150,6 +156,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
 import { notifyError } from '../notify';
 import http from '../api';
@@ -157,6 +164,7 @@ import { avatarColor } from '../utils/avatar';
 import { useAuthStore } from '../stores/auth';
 import { adminPath } from '../paths';
 import { STATUS_MAP, PRIORITY_MAP } from '../constants';
+import { timeAgo } from '../time';
 
 const auth = useAuthStore();
 // 角色的数据范围有限制时给个说明，避免客服以为“工单丢了”
@@ -167,6 +175,7 @@ const scopeHint = computed(() => {
     if (scope === 'own') return '当前角色只能看到你自己提交的工单。';
     return '';
 });
+const router = useRouter();
 const tickets = ref([]);
 const categories = ref([]);
 const total = ref(0);
@@ -229,6 +238,19 @@ const showFilters = ref(false);
 const isMobile = ref(window.matchMedia('(max-width: 768px)').matches);
 window.matchMedia('(max-width: 768px)').addEventListener('change', (e) => { isMobile.value = e.matches; });
 const hasActiveFilters = computed(() => !!(filters.keyword || filters.status || filters.priority || filters.category_id || filters.mine || filters.overdue));
+function onRowClick(row, column, event) {
+    if (column?.type === 'selection') return;
+    if (event?.target?.closest('a, button, .el-link, .el-checkbox, .el-switch')) return;
+    if (trashMode.value) return;
+    router.push(`/tickets/${row.id}`);
+}
+
+let keywordTimer = null;
+function onKeywordInput() {
+    clearTimeout(keywordTimer);
+    keywordTimer = setTimeout(() => load(1), 350);
+}
+
 const filters = reactive({ keyword: '', status: '', priority: '', category_id: '', mine: false, overdue: false });
 
 // 记住上次的筛选条件：客服经常盯同一个队列，刷新/离开再回来不必重选
@@ -345,6 +367,9 @@ onMounted(async () => {
 </script>
 
 <style scoped>
+:deep(.ticket-row) {
+    cursor: pointer;
+}
 .card-header {
     display: flex;
     justify-content: space-between;

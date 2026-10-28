@@ -14,6 +14,7 @@
                 :rows="3"
                 :placeholder="placeholder"
                 @input="onInput"
+                @keydown="onKeydown"
             />
             <div v-if="mentionVisible" class="mention-panel">
                 <div v-if="mentionUsers.length === 0" class="mention-empty">没有匹配的人</div>
@@ -118,7 +119,7 @@ const isInternal = ref(false);
 
 const placeholder = computed(() => {
     if (isInternal.value) return '内部备注：只给同事看，客户永远看不到…';
-    return auth.isStaff ? '输入回复内容…（@账号 可提醒同事）' : '输入回复内容…';
+    return auth.isStaff ? '输入回复内容…（@账号 提醒同事，Ctrl+Enter 发送）' : '输入回复内容…（Ctrl+Enter 发送）';
 });
 
 // 快捷回复
@@ -199,6 +200,11 @@ function textarea() {
 
 /** 键盘导航（原生绑定：el-input attrs 不保证透传到 inner textarea） */
 function onKeydown(e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+        e.preventDefault();
+        send();
+        return;
+    }
     if (! mentionVisible.value) {
         if (e.key === 'Escape') mentionVisible.value = false;
         return;

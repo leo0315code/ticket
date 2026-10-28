@@ -62,7 +62,11 @@
             </el-dropdown>
         </el-header>
         <el-main>
-            <router-view />
+            <router-view v-slot="{ Component }">
+                <transition name="page-fade" mode="out-in">
+                    <component :is="Component" />
+                </transition>
+            </router-view>
         </el-main>
         </el-container>
 
@@ -145,6 +149,19 @@ async function onCommand(cmd) {
 </script>
 
 <style scoped>
+.page-fade-enter-active,
+.page-fade-leave-active {
+    transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.page-fade-enter-from {
+    opacity: 0;
+    transform: translateY(4px);
+}
+
+.page-fade-leave-to {
+    opacity: 0;
+}
 .layout {
     min-height: 100vh;
 }

@@ -55,6 +55,17 @@
                     </el-tooltip>
                 </template>
             </el-table-column>
+            <el-table-column label="自动分配" width="90" align="center">
+                <template #default="{ row }">
+                    <el-switch
+                        v-if="row.role !== 'user'"
+                        :model-value="row.auto_assign !== false"
+                        size="small"
+                        @change="(v) => toggleAutoAssign(row, v)"
+                    />
+                    <span v-else class="muted">—</span>
+                </template>
+            </el-table-column>
             <el-table-column label="状态" width="90">
                 <template #default="{ row }">
                     <el-tag size="small" :type="row.is_active ? 'success' : 'info'">{{ row.is_active ? '启用' : '停用' }}</el-tag>
@@ -322,6 +333,18 @@ async function create() {
         notifyError(errors ? Object.values(errors).flat()[0] : (e.response?.data?.message || '创建失败'));
     } finally {
         creating.value = false;
+    }
+}
+
+async function toggleAutoAssign(row, value) {
+    const before = row.auto_assign;
+    row.auto_assign = value;
+    try {
+        await http.put(`/users/${row.id}`, { auto_assign: value });
+        ElMessage.success(value ? `${row.name} 已加入自动分配` : `${row.name} 已退出自动分配`);
+    } catch (e) {
+        row.auto_assign = before;
+        notifyError(e.response?.data?.message || '操作失败');
     }
 }
 

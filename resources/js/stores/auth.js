@@ -1,4 +1,5 @@
 import { defineStore } from 'pinia';
+import { disconnectRealtime } from '../realtime';
 import http from '../api';
 
 export const useAuthStore = defineStore('auth', {
@@ -72,6 +73,8 @@ export const useAuthStore = defineStore('auth', {
             return data.user;
         },
         async logout() {
+            // 先断开 WS，网关 onClose 立即把该用户标记离线
+            disconnectRealtime();
             // 本地状态一定清干净；服务端注销失败（token 过期等）不阻塞退出
             try {
                 await http.post('/logout');

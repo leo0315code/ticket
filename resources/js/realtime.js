@@ -13,6 +13,7 @@ const configuredUrl = window.GATEWAY_WS_URL || '';
 let ws = null;
 let connecting = null;
 let reconnectTimer = null;
+let stopped = false; // 登出后彻底停掉，不再自动重连
 let reconnectDelay = 1000;
 let handlers = [];
 
@@ -58,6 +59,9 @@ async function fetchTicket() {
  * onMessage: (payload) => void  payload 为通知内容 {event, message, ticket_id, ...}
  */
 export async function connectRealtime(onMessage) {
+    // 带 handler 的调用来自页面主动挂载（登录后），解除 stopped；退避重连不传 handler，保持停止状态
+    if (onMessage) stopped = false;
+    if (stopped) return;
     if (onMessage && ! handlers.includes(onMessage)) handlers.push(onMessage);
     if (ws || connecting) return;
 
@@ -125,6 +129,7 @@ export async function connectRealtime(onMessage) {
 
 /** 退避重连：1s → 2s → 4s → 8s → 15s → 最大 30s */
 function scheduleReconnect(delay = reconnectDelay) {
+    if (stopped) return;
     clearTimeout(reconnectTimer);
     reconnectTimer = setTimeout(() => {
         reconnectDelay = Math.min(Math.max(delay, 1000) * 2, 30000);
@@ -146,6 +151,18 @@ export function reconnectNow() {
     clearTimeout(reconnectTimer);
     reconnectDelay = 1000;
     connectRealtime();
+}
+
+export function disconnectRealtime() {
+    clearTimeout(reconnectTimer);
+    reconnectTimer = null;
+    stopped = true;
+    handlers.length = 0;
+    if (ws) {
+        try { ws.close(); } catch { /* noop */ }
+        ws = null;
+    }
+    connecting = false;
 }
 
 if (typeof window !== 'undefined') {

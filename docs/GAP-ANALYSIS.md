@@ -883,12 +883,12 @@ faqs                                -- 直接扩，不建 kb_articles
 - **新工单自动分配**（v2.36）：分类可设默认受理人；后台「系统设置 → 生命周期」可开启自动分配（默认客服优先，否则按未结量最少的客服）；指派后写日志并通知。
 - **关联工单**（v2.36）：双向关联（合并之外补关联），详情页右侧卡片按编号关联/解除/跳转，列表不查关联避免 N+1。
 - **统计导出 CSV**（v2.36）：`GET /api/stats/export?days=` 导出按天明细 + 坐席绩效（BOM 头 Excel 直开），看板工具条一键下载；权限沿用 `stats.view`。
-- **客服在线状态与服务时间拦截（v2.37）**：`users.last_seen_at` 由 `TrackPresence` 中间件节流写入（60 秒最多一次），5 分钟内有活动视为在线；用户管理表格显示在线圆点。服务时间复用「营业时间」配置（工作日 + 上下班），普通用户在非服务时段或「无客服在线」（可开关）时提交工单返回 422 并附带紧急联系电话；客服可代录不受限。自动分配只在在线客服中挑选（默认客服离线时落到其他在线客服，全离线则保持未分配）。紧急联系电话显示在帮助中心顶部，提单页同步显示拦截横幅。
+- **客服在线状态与服务时间拦截（v2.37，v2.38 改为 WS 判定）**：`users.last_seen_at` 由 `TrackPresence` 中间件节流写入（仅作“最后活跃”展示），**在线状态以 WebSocket 连接为准**：网关握手成功写 `users.ws_connected_at`，断开（含心跳超时 45s）即清空；同账号多连接全部断开才算离线；心跳消息 60 秒节流刷新在线时间，10 分钟兜底窗口防网关崩溃残留；用户管理表格显示在线圆点。服务时间复用「营业时间」配置（工作日 + 上下班），普通用户在非服务时段或「无客服在线」（可开关）时提交工单返回 422 并附带紧急联系电话；客服可代录不受限。自动分配只在在线客服中挑选（默认客服离线时落到其他在线客服，全离线则保持未分配）。紧急联系电话显示在帮助中心顶部，提单页同步显示拦截横幅。
 ### 13.4 验证
 
 - `php artisan test`：**182 passed / 751 assertions**（新增 `EngagementTest` 14 条、`FaqTest` 4 条、`SettingsTest` 7 条、`RoleTest` 7 条、`UserManagementTest` 9 条、`TicketScopeTest` 6 条、`TicketTrashTest` 6 条、`PublicHelpTest` 4 条、`PasswordResetTest` 5 条、`LoginMethodTest` 15 条、`ResolutionSlaTest` 5 条、`TicketWatchTest` 6 条、`PermissionAuditTest` 4 条、`NotifyPreferenceTest` 5 条、`AutoAssignTest` 4 条、`TicketLinkTest` 4 条、`StatsExportTest` 3 条、`PresenceTest` 7 条）。
 - `npm run build`：通过（仅剩既有的 chunk 体积告警）。
-- 新增迁移 20 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
+- 新增迁移 21 个，`php artisan migrate` 已在开发库执行；生产部署记得跑迁移并确认 `schedule:run` 已配 cron。
 - 权限约定：接口用 `permission:key` 中间件，前端用 `auth.can('key')`；新增敏感接口时两处都要加。
 
 ### 13.5 仍建议后续

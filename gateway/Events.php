@@ -38,6 +38,9 @@ class Events
         }
 
         Gateway::bindUid($client_id, 'u'.$user['id']);
+        // 记录连接归属，onClose 时据此清除在线状态
+        $_SESSION['ws_uid'] = (int) $user['id'];
+        self::markConnected((int) $user['id']);
         // 带上角色，前端/网关都能据此区分前台用户与后台坐席
         Gateway::sendToClient($client_id, json_encode([
             'type' => 'connected',
@@ -49,7 +52,10 @@ class Events
 
     public static function onMessage($client_id, $message)
     {
-        // 客户端心跳
+        // 任何客户端消息都视为存活信号：回复心跳并节流刷新在线时间
+        if (! empty($_SESSION['ws_uid'])) {
+            self::markConnected((int) $_SESSION['ws_uid'], 60);
+        }
         if (trim($message) === 'ping') {
             Gateway::sendToClient($client_id, 'pong');
         }
@@ -57,6 +63,40 @@ class Events
 
     public static function onClose($client_id)
     {
+        $uid = $_SESSION['ws_uid'] ?? null;
+        if (! $uid) {
+            return;
+        }
+        // 同一账号可能有多个连接（桌面+手机），全部断开才算离线
+        if (! Gateway::isUidOnline('u'.$uid)) {
+            self::markDisconnected((int) $uid);
+        }
+    }
+
+    /** 标记在线；$throttle 秒内已标记过则跳过，避免心跳写库过频 */
+    private static function markConnected(int $uid, int $throttle = 0): void
+    {
+        try {
+            $now = gmdate('Y-m-d H:i:s');
+            $st = $throttle > 0
+                ? self::pdo()->prepare('UPDATE users SET ws_connected_at=? WHERE id=? AND (ws_connected_at IS NULL OR ws_connected_at < ?)')
+                : self::pdo()->prepare('UPDATE users SET ws_connected_at=? WHERE id=?');
+            if ($throttle > 0) {
+                $st->execute([$now, $uid, gmdate('Y-m-d H:i:s', time() - $throttle)]);
+            } else {
+                $st->execute([$now, $uid]);
+            }
+        } catch (\Throwable $e) {
+            // 在线状态失败不影响消息通道
+        }
+    }
+
+    private static function markDisconnected(int $uid): void
+    {
+        try {
+            self::pdo()->prepare('UPDATE users SET ws_connected_at=NULL WHERE id=?')->execute([$uid]);
+        } catch (\Throwable $e) {
+        }
     }
 
     /**

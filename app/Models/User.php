@@ -73,20 +73,20 @@ class User extends Authenticatable
     }
 
     /** 能进后台的所有角色（含自定义角色） */
-    /** 多少分钟内有请求视为在线 */
-    public const ONLINE_MINUTES = 5;
+    /** WS 在线状态的兜底过期窗口（正常断开会立即清空，此处防网关崩溃残留） */
+    public const ONLINE_STALE_MINUTES = 10;
 
-    /** 在线客服：启用、客服角色、最近活跃 */
+    /** 在线 = WebSocket 连接存活（ws_connected_at 由网关在连接/心跳时刷新，断开即清空；10 分钟兜底防网关异常退出残留） */
     public function scopeOnlineStaff(Builder $query): Builder
     {
         return $query->staff()->where('is_active', true)
-            ->where('last_seen_at', '>=', now()->subMinutes(self::ONLINE_MINUTES));
+            ->where('ws_connected_at', '>=', now()->subMinutes(self::ONLINE_STALE_MINUTES));
     }
 
     public function isOnline(): bool
     {
-        return $this->last_seen_at !== null
-            && $this->last_seen_at->gte(now()->subMinutes(self::ONLINE_MINUTES));
+        return $this->ws_connected_at !== null
+            && $this->ws_connected_at->gte(now()->subMinutes(self::ONLINE_STALE_MINUTES));
     }
 
     public function scopeStaff(Builder $query): Builder
@@ -131,6 +131,7 @@ class User extends Authenticatable
             'notify_email' => 'boolean',
             'last_login_at' => 'datetime',
             'last_seen_at' => 'datetime',
+            'ws_connected_at' => 'datetime',
         ];
     }
 }

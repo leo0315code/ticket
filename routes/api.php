@@ -108,6 +108,7 @@ Route::middleware(['auth:sanctum', 'active', 'throttle:240,1'])->group(function 
     Route::post('/categories', [CategoryController::class, 'store'])->middleware('permission:category.manage');
     Route::put('/categories/{category}', [CategoryController::class, 'update'])->middleware('permission:category.manage');
     Route::delete('/categories/{category}', [CategoryController::class, 'destroy'])->middleware('permission:category.manage');
+    Route::apiResource('ticket-rules', \App\Http\Controllers\Api\TicketRuleController::class)->except('show')->middleware('permission:category.manage');
     Route::get('/faqs/search-stats', [FaqController::class, 'searchStats'])->middleware('permission:faq.manage');
     Route::post('/faqs', [FaqController::class, 'store'])->middleware('permission:faq.manage');
     Route::put('/faqs/{faq}', [FaqController::class, 'update'])->middleware('permission:faq.manage');

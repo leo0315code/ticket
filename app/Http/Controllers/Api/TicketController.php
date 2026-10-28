@@ -66,6 +66,9 @@ class TicketController extends Controller
         ]), 30);
         $ticket->log('created', $request->user()->id, "创建工单【{$ticket->title}】");
 
+        // 触发器 Lite：关键词命中 → 自动分类/优先级（先于自动分配，分类默认客服随之生效）
+        \App\Models\TicketRule::applyTo($ticket);
+
         // 自动分配（系统设置开启时）：分类默认客服 → 否则未结工单最少的客服
         if (Settings::get('auto_assign', false) && $ticket->agent_id === null) {
             if ($assignee = Ticket::pickAssignee($ticket->category)) {

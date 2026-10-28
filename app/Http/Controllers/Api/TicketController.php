@@ -47,6 +47,14 @@ class TicketController extends Controller
             'category_id' => ['required', Rule::exists('categories', 'id')],
         ]);
 
+        // 服务时间/在线客服拦截（只对普通用户生效，客服可代录）
+        if (! $request->user()->isStaff()) {
+            $reason = Settings::submissionBlockReason();
+            if ($reason !== null) {
+                return response()->json(['message' => $reason], 422);
+            }
+        }
+
         // 工单号按“当日最大序号 +1”生成，并发下可能撞唯一索引：撞了就重算重试
         $ticket = retry(5, fn () => $request->user()->tickets()->create([
             ...$data,

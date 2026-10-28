@@ -70,9 +70,10 @@ class Ticket extends Model
     public const ACTIVE_STATUSES = ['open', 'in_progress', 'pending_resolved'];
 
     /** 自动分配：优先分类默认客服（须在职且在 staff 角色），否则未结工单最少的客服 */
+    /** 自动分配只从「在线」客服里挑；无人在线返回 null（工单保持未分配） */
     public static function pickAssignee(?Category $category): ?User
     {
-        $staff = User::staff()->where('is_active', true)->get();
+        $staff = User::onlineStaff()->get();
 
         if ($staff->isEmpty()) {
             return null;

@@ -48,6 +48,13 @@
                     </el-tag>
                 </template>
             </el-table-column>
+            <el-table-column label="在线" width="80" align="center">
+                <template #default="{ row }">
+                    <el-tooltip :content="row.is_online ? `在线（${row.last_seen_at || ''}）` : '离线'" placement="top">
+                        <span class="presence-dot" :class="{ on: row.is_online }" />
+                    </el-tooltip>
+                </template>
+            </el-table-column>
             <el-table-column label="状态" width="90">
                 <template #default="{ row }">
                     <el-tag size="small" :type="row.is_active ? 'success' : 'info'">{{ row.is_active ? '启用' : '停用' }}</el-tag>
@@ -427,5 +434,18 @@ onMounted(async () => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.presence-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: var(--el-color-info-light-5);
+}
+
+.presence-dot.on {
+    background: var(--el-color-success);
+    box-shadow: 0 0 0 3px var(--el-color-success-light-8);
 }
 </style>

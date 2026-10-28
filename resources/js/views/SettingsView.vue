@@ -196,6 +196,17 @@
             <el-switch v-model="form.auto_assign" />
             <span class="hint">开启后优先指派给分类的默认客服，否则给未结工单最少的客服</span>
         </el-form-item>
+        <el-form-item label="无客服在线时禁提单">
+            <el-switch v-model="form.require_online_agent" />
+            <span class="hint">开启后，普通用户在无客服在线（5 分钟内无活动）时不能提交工单</span>
+        </el-form-item>
+        <el-form-item label="紧急联系电话">
+            <el-input v-model="form.support_phone" maxlength="30" placeholder="如 400-800-1234，留空不显示" style="width: 240px" />
+            <span class="hint">显示在帮助中心顶部；非服务时间或无客服在线时的拦截提示里也会带上</span>
+        </el-form-item>
+        <el-form-item label="服务时间">
+            <span class="hint">复用上方「按营业时间计算」的工作时间与工作日：开启后非服务时段同样拦截提单</span>
+        </el-form-item>
         <el-form label-width="150px" style="max-width: 660px">
             <el-form-item label="待确认自动关闭">
                 <el-input-number v-model="form.auto_close_days" :min="1" :max="90" />
@@ -245,6 +256,8 @@ const form = reactive({
     business_hours_days: [1, 2, 3, 4, 5],
     business_timezone: 'Asia/Shanghai',
     auto_assign: false,
+    require_online_agent: false,
+    support_phone: '',
     auto_close_days: 7,
     reopen_days: 14,
     reopen_limit: 3,

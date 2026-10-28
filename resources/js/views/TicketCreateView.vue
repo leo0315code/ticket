@@ -3,6 +3,14 @@
         <template #header>
             <span class="page-title">{{ isMobile ? '提交新工单' : '新建工单' }}</span>
         </template>
+        <el-alert
+            v-if="blockReason"
+            :title="blockReason"
+            type="warning"
+            :closable="false"
+            show-icon
+            style="margin-bottom: 14px"
+        />
         <el-form
             :model="form"
             :label-position="isMobile ? 'top' : 'right'"
@@ -49,7 +57,7 @@
 
             <el-form-item class="actions">
                 <el-button v-if="!isMobile" @click="$router.back()">取消</el-button>
-                <el-button type="primary" :loading="loading" class="submit-btn" @click="submit">
+                <el-button type="primary" :disabled="!!blockReason" :loading="loading" class="submit-btn" @click="submit">
                     {{ isMobile ? '提 交 工 单' : '提交工单' }}
                 </el-button>
             </el-form-item>
@@ -66,7 +74,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { notifyError } from '../notify';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage } from 'element-plus';
@@ -104,6 +112,25 @@ const auth = useAuthStore();
 const loading = ref(false);
 const categories = ref([]);
 const form = reactive({ title: '', content: '', priority: 'medium', category_id: '' });
+
+const blockReason = computed(() => {
+    if (auth.isStaff) return null;
+    const m = meta();
+    const phone = m.support_phone ? `，如有紧急问题请拨打 ${m.support_phone}` : '，请稍后再试';
+    if (m.work_hours_enabled) {
+        const now = new Date();
+        const day = now.getDay() === 0 ? 7 : now.getDay();
+        const days = String(m.work_days || '').split(',').map(Number).filter(Boolean);
+        const hm = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+        if ((days.length && !days.includes(day)) || hm < m.work_hours_start || hm >= m.work_hours_end) {
+            return `当前不在客服服务时间（${m.work_hours_start} - ${m.work_hours_end}）${phone}。`;
+        }
+    }
+    if (m.require_online_agent && !m.agents_online) {
+        return `当前暂无客服在线，暂时无法提交工单${phone}。`;
+    }
+    return null;
+});
 
 onMounted(async () => {
     const { data } = await http.get('/categories');

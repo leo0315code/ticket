@@ -21,6 +21,9 @@ class Settings
         'business_hours_days' => [1, 2, 3, 4, 5],
         'business_timezone' => 'Asia/Shanghai',
         'auto_assign' => false,
+        // 提交拦截：服务时间复用 business_hours_*，此处只放两个新增开关
+        'require_online_agent' => false,
+        'support_phone' => '',
         'auto_close_days' => 7,
         'reopen_days' => 14,
         'reopen_limit' => 3,
@@ -73,6 +76,43 @@ class Settings
     public static function get(string $key, mixed $default = null): mixed
     {
         return self::all()[$key] ?? $default;
+    }
+
+    /** 当前是否处于服务时间（未开启时段限制时恒为 true；复用 business_hours_*） */
+    public static function withinWorkHours(): bool
+    {
+        if (! self::get('business_hours_enabled')) {
+            return true;
+        }
+        $now = now();
+        $days = array_map('intval', (array) self::get('business_hours_days', [1, 2, 3, 4, 5]));
+        if ($days && ! in_array($now->isoWeekday(), $days, true)) {
+            return false;
+        }
+        $hm = $now->format('H:i');
+
+        return $hm >= (string) self::get('business_hours_start', '09:00')
+            && $hm < (string) self::get('business_hours_end', '18:00');
+    }
+
+    /** 是否允许现在提交工单；返回 null 表示允许，否则为提示文案 */
+    public static function submissionBlockReason(): ?string
+    {
+        $phone = trim((string) self::get('support_phone'));
+        $suffix = $phone !== '' ? "如有紧急问题请拨打 {$phone}" : '请稍后再试';
+
+        if (! self::withinWorkHours()) {
+            $names = ['1' => '一', '2' => '二', '3' => '三', '4' => '四', '5' => '五', '6' => '六', '7' => '日'];
+            $dayNames = implode('、', array_map(fn ($d) => '周'.($names[$d] ?? $d), (array) self::get('business_hours_days', [1, 2, 3, 4, 5])));
+
+            return "当前不在客服服务时间（{$dayNames} ".self::get('business_hours_start', '09:00').' - '.self::get('business_hours_end', '18:00')."），{$suffix}。";
+        }
+
+        if (self::get('require_online_agent') && \App\Models\User::onlineStaff()->count() === 0) {
+            return "当前暂无客服在线，暂时无法提交工单，{$suffix}。";
+        }
+
+        return null;
     }
 
     /** @param array<string, mixed> $values */

@@ -54,6 +54,8 @@ class SettingsController extends Controller
             'business_hours_days.*' => ['integer', 'between:1,7'],
             'business_timezone' => ['sometimes', 'timezone'],
             'auto_assign' => ['sometimes', 'boolean'],
+            'require_online_agent' => ['sometimes', 'boolean'],
+            'support_phone' => ['sometimes', 'nullable', 'string', 'max:30'],
             'auto_close_days' => ['sometimes', 'integer', 'min:1', 'max:90'],
             'reopen_days' => ['sometimes', 'integer', 'min:0', 'max:365'],
             'reopen_limit' => ['sometimes', 'integer', 'min:0', 'max:20'],

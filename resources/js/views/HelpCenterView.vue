@@ -87,7 +87,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, reactive } from 'vue';
 import { useRouter } from 'vue-router';
 import { Moon, Search, Sunny } from '@element-plus/icons-vue';
 import http from '../api';
@@ -98,7 +98,7 @@ import { isDark, toggleTheme } from '../theme';
 
 const router = useRouter();
 const auth = useAuthStore();
-const site = meta();
+const site = reactive(meta());
 
 const dark = ref(isDark());
 const faqs = ref([]);
@@ -385,5 +385,21 @@ onMounted(async () => {
 }
 .dot {
     margin: 0 6px;
+}
+
+.hero-phone {
+    margin-top: 10px;
+    font-size: 14px;
+    color: var(--el-text-color-secondary);
+}
+
+.hero-phone a {
+    color: var(--el-color-primary);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.hero-phone-time {
+    color: var(--el-text-color-placeholder);
 }
 </style>

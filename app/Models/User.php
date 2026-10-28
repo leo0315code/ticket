@@ -73,6 +73,22 @@ class User extends Authenticatable
     }
 
     /** 能进后台的所有角色（含自定义角色） */
+    /** 多少分钟内有请求视为在线 */
+    public const ONLINE_MINUTES = 5;
+
+    /** 在线客服：启用、客服角色、最近活跃 */
+    public function scopeOnlineStaff(Builder $query): Builder
+    {
+        return $query->staff()->where('is_active', true)
+            ->where('last_seen_at', '>=', now()->subMinutes(self::ONLINE_MINUTES));
+    }
+
+    public function isOnline(): bool
+    {
+        return $this->last_seen_at !== null
+            && $this->last_seen_at->gte(now()->subMinutes(self::ONLINE_MINUTES));
+    }
+
     public function scopeStaff(Builder $query): Builder
     {
         return $query->whereIn('role', Role::staffNames());
@@ -114,6 +130,7 @@ class User extends Authenticatable
             'is_active' => 'boolean',
             'notify_email' => 'boolean',
             'last_login_at' => 'datetime',
+            'last_seen_at' => 'datetime',
         ];
     }
 }

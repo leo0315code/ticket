@@ -103,4 +103,79 @@ class WeChat
 
         return hash_equals(hash_hmac('sha256', $ts, (string) config('app.key')), $sig);
     }
+    /** 公众号接口凭证（client_credential），按 expires_in 提前 5 分钟缓存 */
+    public static function accessToken(): ?string
+    {
+        $cached = \Illuminate\Support\Facades\Cache::get('wechat:access_token');
+        if ($cached) {
+            return $cached;
+        }
+
+        $appId = Settings::get('wechat_app_id');
+        $secret = Settings::get('wechat_app_secret');
+        if (! $appId || ! $secret) {
+            return null;
+        }
+
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(10)->get('https://api.weixin.qq.com/cgi-bin/token', [
+                'grant_type' => 'client_credential',
+                'appid' => $appId,
+                'secret' => $secret,
+            ]);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WeChat access_token 获取失败：'.$e->getMessage());
+
+            return null;
+        }
+
+        $token = $res->json('access_token');
+        if (! $token) {
+            \Illuminate\Support\Facades\Log::warning('WeChat access_token 响应异常：'.$res->body());
+
+            return null;
+        }
+
+        \Illuminate\Support\Facades\Cache::put('wechat:access_token', $token, max(60, (int) $res->json('expires_in', 7200) - 300));
+
+        return $token;
+    }
+
+    /**
+     * 发送模板消息。$data 为 ['first' => '…', 'keyword1' => '…', ...]（value 自动包装）。
+     * 失败只记日志不抛异常：通知通道不应阻塞队列。
+     */
+    public static function sendTemplateMessage(string $openid, string $templateId, ?string $url, array $data): bool
+    {
+        $token = static::accessToken();
+        if (! $token) {
+            return false;
+        }
+
+        $payload = [
+            'touser' => $openid,
+            'template_id' => $templateId,
+            'data' => collect($data)->mapWithKeys(fn ($v, $k) => [$k => ['value' => (string) $v]])->all(),
+        ];
+        if ($url) {
+            $payload['url'] = $url;
+        }
+
+        try {
+            $res = \Illuminate\Support\Facades\Http::timeout(10)
+                ->post("https://api.weixin.qq.com/cgi-bin/message/template/send?access_token={$token}", $payload);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('WeChat 模板消息发送失败：'.$e->getMessage());
+
+            return false;
+        }
+
+        if ((int) $res->json('errcode', -1) !== 0) {
+            \Illuminate\Support\Facades\Log::warning('WeChat 模板消息被拒：'.$res->body());
+
+            return false;
+        }
+
+        return true;
+    }
 }

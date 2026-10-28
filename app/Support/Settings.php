@@ -51,6 +51,9 @@ class Settings
         'sms_sign' => '工单支持中心',
         'sms_code_ttl' => 300,          // 验证码有效期（秒）
         'wechat_login_enabled' => false,
+        'wechat_notify_enabled' => false,
+        'wechat_reply_template_id' => '',
+        'wechat_status_template_id' => '',
         'wechat_mode' => 'open',        // open（开放平台网站应用扫码）| mp（公众号网页授权）
         'wechat_app_id' => '',
         'wechat_app_secret' => '',

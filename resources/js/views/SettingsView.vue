@@ -150,6 +150,21 @@
             <el-form-item label="授权回调地址">
                 <el-input :model-value="wechatCallback" readonly />
             </el-form-item>
+
+            <el-divider content-position="left">模板消息通知</el-divider>
+            <el-form-item label="启用模板消息">
+                <el-switch v-model="form.wechat_notify_enabled" />
+                <span class="hint">客服回复 / 工单状态变更时，给已绑定公众号的客户推微信提醒（需已认证服务号）</span>
+            </el-form-item>
+            <el-form-item label="新回复模板 ID" v-if="form.wechat_notify_enabled">
+                <el-input v-model="form.wechat_reply_template_id" maxlength="64" style="width: 320px" placeholder="公众号后台「模板消息」里添加" />
+            </el-form-item>
+            <el-form-item label="状态变更模板 ID" v-if="form.wechat_notify_enabled">
+                <el-input v-model="form.wechat_status_template_id" maxlength="64" style="width: 320px" placeholder="留空则状态变更不推送" />
+            </el-form-item>
+            <el-form-item label=" " v-if="form.wechat_notify_enabled">
+                <span class="hint">模板字段顺序需为：first / keyword1（工单号）/ keyword2（工单标题）/ keyword3（时间）/ remark</span>
+            </el-form-item>
         </el-form>
 
         <h4 class="section">响应时限（SLA）</h4>
@@ -282,6 +297,9 @@ const form = reactive({
     sms_code_ttl: 300,
     wechat_login_enabled: false,
     wechat_mode: 'open',
+    wechat_notify_enabled: false,
+    wechat_reply_template_id: '',
+    wechat_status_template_id: '',
     wechat_app_id: '',
     wechat_app_secret: '',
     wechat_app_secret_set: false,

@@ -73,7 +73,7 @@ class Ticket extends Model
     /** 自动分配只从「在线」客服里挑；无人在线返回 null（工单保持未分配） */
     public static function pickAssignee(?Category $category): ?User
     {
-        $staff = User::onlineStaff()->get();
+        $staff = User::onlineStaff()->where('auto_assign', true)->get();
 
         if ($staff->isEmpty()) {
             return null;

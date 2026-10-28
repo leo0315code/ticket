@@ -84,6 +84,7 @@ class UserController extends Controller
             'email' => ['sometimes', 'nullable', 'email', 'max:100', Rule::unique('users', 'email')->ignore($user->id)],
             'role' => ['sometimes', 'string', Rule::exists('roles', 'name')],
             'is_active' => ['sometimes', 'boolean'],
+            'auto_assign' => ['sometimes', 'boolean'],
             'password' => ['sometimes', Password::min(8)],
         ]);
 
@@ -108,7 +109,7 @@ class UserController extends Controller
             $user->tokens()->delete();
         }
 
-        $before = ['role' => $user->role, 'is_active' => $user->is_active, 'name' => $user->name];
+        $before = ['role' => $user->role, 'is_active' => $user->is_active, 'name' => $user->name, 'auto_assign' => (bool) $user->auto_assign];
         $user->update($data);
 
         if ($before['role'] !== $user->role) {

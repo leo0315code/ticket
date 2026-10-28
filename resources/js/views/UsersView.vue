@@ -134,6 +134,10 @@
                         <el-option v-for="r in roleOptions" :key="r.name" :label="r.label" :value="r.name" />
                     </el-select>
                 </el-form-item>
+                <el-form-item label="自动分配">
+                    <el-switch v-model="editForm.auto_assign" active-text="参与" inactive-text="不参与" />
+                    <div class="muted" style="font-size: 12px">不参与的账号不会被自动派单（如管理员/主管），仍可被手动指派</div>
+                </el-form-item>
                 <el-form-item label="状态">
                     <el-switch
                         v-model="editForm.is_active"
@@ -233,7 +237,7 @@ const createForm = reactive({ name: '', username: '', email: '', password: '', r
 
 const editDialog = ref(false);
 const saving = ref(false);
-const editForm = reactive({ id: null, name: '', email: '', role: 'agent', is_active: true });
+const editForm = reactive({ id: null, name: '', email: '', role: 'agent', is_active: true, auto_assign: true });
 
 const resetDialog = ref(false);
 const resetPasswordValue = ref('');
@@ -328,6 +332,7 @@ function openEdit(row) {
         email: row.email || '',
         role: row.role,
         is_active: row.is_active !== false,
+        auto_assign: row.auto_assign !== false,
     });
     editDialog.value = true;
 }
@@ -340,6 +345,7 @@ async function saveEdit() {
             email: editForm.email || null,
             role: editForm.role,
             is_active: editForm.is_active,
+            auto_assign: editForm.auto_assign,
         });
         editDialog.value = false;
         ElMessage.success('已保存');

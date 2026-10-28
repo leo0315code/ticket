@@ -69,4 +69,31 @@ class AutoAssignTest extends ApiTestCase
             'title' => '标题', 'content' => '内容', 'priority' => 'medium', 'category_id' => $category->id,
         ])->assertCreated()->assertJsonPath('agent.id', $other->id);
     }
+
+    public function test_opted_out_admin_is_not_auto_assigned(): void
+    {
+        Settings::put(['auto_assign' => true]);
+        $category = \App\Models\Category::firstOrCreate(['name' => '自动分配']);
+        // 只有管理员在线，但他不参与自动分配
+        $this->makeUser('admin', ['ws_connected_at' => now(), 'auto_assign' => false]);
+
+        $response = $this->actingAsApi($this->makeUser())->postJson('/api/tickets', [
+            'title' => '测试', 'content' => '内容', 'priority' => 'medium', 'category_id' => $category->id,
+        ])->assertStatus(201);
+
+        $this->assertNull($response->json('data.agent.id') ?? $response->json('agent.id'));
+    }
+
+    public function test_opted_in_admin_gets_assigned_when_alone_online(): void
+    {
+        Settings::put(['auto_assign' => true]);
+        $category = \App\Models\Category::firstOrCreate(['name' => '自动分配']);
+        $admin = $this->makeUser('admin', ['ws_connected_at' => now()]); // 默认参与
+
+        $response = $this->actingAsApi($this->makeUser())->postJson('/api/tickets', [
+            'title' => '测试', 'content' => '内容', 'priority' => 'medium', 'category_id' => $category->id,
+        ])->assertStatus(201);
+
+        $this->assertEquals($admin->id, $response->json('data.agent.id') ?? $response->json('agent.id'));
+    }
 }

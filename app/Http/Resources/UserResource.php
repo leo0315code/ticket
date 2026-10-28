@@ -28,6 +28,7 @@ class UserResource extends JsonResource
             'last_login_at' => $this->last_login_at?->format('Y-m-d H:i'),
             'last_seen_at' => $this->last_seen_at?->format('Y-m-d H:i'),
             'is_online' => $this->isOnline(),
+            'auto_assign' => (bool) $this->auto_assign,
             'tickets_count' => $this->whenCounted('tickets'),
             'assigned_tickets_count' => $this->whenCounted('assignedTickets'),
         ];
